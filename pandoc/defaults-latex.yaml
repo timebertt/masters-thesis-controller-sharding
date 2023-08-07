@@ -1,0 +1,34 @@
+to: latex
+
+metadata:
+  listings: true
+
+variables:
+  documentclass: scrreprt
+
+  classoption:
+  - a4paper
+  - fontsize=12pt
+  - numbers=noenddot
+  - chapterprefix=false
+  - headings=optiontohead
+  - svgnames
+  - dvipsnames
+  - listof=nochaptergap # no chapter gap in list of figures/tables
+  # - oneside
+
+  hyperrefoptions:
+  - linktoc=all
+  # - hidelinks
+
+listings: false
+pdf-engine: latexmk
+pdf-engine-opt:
+- "-xelatex"
+- "-r"
+- "pandoc/.latexmkrc"
+- "-g"
+- "-outdir=output-tex"
+
+include-in-header:
+- pandoc/includes/header.tex

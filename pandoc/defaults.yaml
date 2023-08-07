@@ -1,0 +1,45 @@
+from: markdown+link_attributes+native_divs+raw_tex+tex_math_dollars+inline_code_attributes+grid_tables+fenced_code_attributes
+
+metadata:
+  link-citations: true
+  link-bibliography: true
+  bibliography: content/bibliography.bib
+  csl: pandoc/ieee.csl
+
+  # pandoc-crossref options
+  chapters: true
+  autoSectionLabels: true
+  # figPrefix: "Abb."
+  # tblPrefix: "Tab."
+  # eqnPrefix: "Formel"
+  lstPrefix: code
+
+  codeBlockCaptions: true
+
+highlight-style: pandoc/highlight-style.theme
+
+variables:
+  linkcolor: Maroon
+  filecolor: Black
+  citecolor: Black
+  urlcolor: MediumBlue
+  toccolor: Black
+
+number-sections: true
+toc: false # insert TOC manually after abstract
+top-level-division: chapter
+resource-path:
+- "."
+- "assets"
+- "results"
+- "pandoc/fonts"
+
+eol: lf
+
+filters:
+- ./pandoc/filters/remove-date.sh
+- pandoc-crossref
+- ./pandoc/filters/pandoc-minted.py
+- ./pandoc/filters/pretty-tables.py
+- citeproc
+
