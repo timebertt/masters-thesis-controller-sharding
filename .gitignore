@@ -1,5 +1,5 @@
 /build
 /output-tex
 .idea
-/results/*.pdf
+/results/**/*.pdf
 __pycache__
