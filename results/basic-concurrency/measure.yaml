@@ -1,0 +1,12 @@
+# scenario: basic
+# measure -o results/basic-concurrency results/basic-concurrency/measure.yaml --output-prefix 5-workers- --start 2023-08-24T05:50:39Z --end 2023-08-24T06:05:39Z
+# measure -o results/basic-concurrency results/basic-concurrency/measure.yaml --output-prefix 5-workers-v1- --start 2023-08-24T07:31:25Z --end 2023-08-24T07:46:25Z
+queries:
+- name: cpu
+  query: sum(rate(container_cpu_usage_seconds_total{namespace="webhosting-system", container="manager"}[2m])) by (pod)
+- name: memory
+  query: sum(container_memory_rss{namespace="webhosting-system", container="manager"}) by (pod)
+- name: network_receive
+  query: sum(irate(container_network_receive_bytes_total{namespace="webhosting-system", pod=~"webhosting-operator-.+"}[2m])) by (pod)
+- name: network_transmit
+  query: sum(irate(container_network_transmit_bytes_total{namespace="webhosting-system", pod=~"webhosting-operator-.+"}[2m])) by (pod)
