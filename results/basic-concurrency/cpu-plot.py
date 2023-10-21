@@ -23,9 +23,9 @@ data.plot(
 )
 
 ax2 = plt.subplot(122, sharex=ax1, sharey=ax1)
-data = read_data('5-workers-v1-cpu.csv')
+data = read_data('15-workers-cpu.csv')
 data.plot(
-    title='5 Workers v1.0',
+    title='15 Workers',
     legend=False,
     grid=True,
     xlabel='Time in seconds',

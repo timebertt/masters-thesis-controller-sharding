@@ -24,10 +24,10 @@ data.plot(
 )
 
 ax2 = plt.subplot(222, sharex=ax1, sharey=ax1)
-data = read_data('5-workers-v1-network_receive.csv')
+data = read_data('15-workers-network_receive.csv')
 data = data / (2 ** 20)
 data.plot(
-    title='5 Workers v1: Receive Bandwidth',
+    title='15 Workers: Receive Bandwidth',
     legend=False,
     grid=True,
     xlabel='Time in seconds',
@@ -52,10 +52,10 @@ data.plot(
 )
 
 ax4 = plt.subplot(224, sharex=ax3, sharey=ax3)
-data = read_data('5-workers-v1-network_transmit.csv')
+data = read_data('15-workers-network_transmit.csv')
 data = data / (2 ** 20)
 data.plot(
-    title='5 Workers v1: Transmit Bandwidth',
+    title='15 Workers: Transmit Bandwidth',
     legend=False,
     grid=True,
     xlabel='Time in seconds',

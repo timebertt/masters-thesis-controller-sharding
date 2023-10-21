@@ -24,10 +24,10 @@ data.plot(
 )
 
 ax2 = plt.subplot(122, sharex=ax1, sharey=ax1)
-data = read_data('5-workers-v1-memory.csv')
+data = read_data('15-workers-memory.csv')
 data = data / (2 ** 20)
 data.plot(
-    title='5 Workers v1',
+    title='15 Workers',
     legend=False,
     grid=True,
     xlabel='Time in seconds',
