@@ -1,0 +1,5 @@
+{
+    // Latex files aren't edited directly here, only by pandoc.
+    // Disable latex workshop's auto build accordignly.
+    "latex-workshop.latex.autoBuild.run": "never"
+}

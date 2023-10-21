@@ -1,0 +1,46 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "./hack/make.sh pdf",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "silent"
+            }
+        },
+        {
+            "label": "Plots",
+            "type": "shell",
+            "command": "./hack/make.sh plots",
+            "group": {
+                "kind": "build"
+            },
+            "presentation": {
+                "reveal": "silent"
+            }
+        },
+        {
+            "label": "Clean",
+            "type": "shell",
+            "command": "./hack/make.sh clean",
+            "group": {
+                "kind": "build"
+            }
+        },
+        {
+            "label": "Clean Plots",
+            "type": "shell",
+            "command": "./hack/make.sh clean-plots",
+            "group": {
+                "kind": "build"
+            }
+        },
+    ]
+}
