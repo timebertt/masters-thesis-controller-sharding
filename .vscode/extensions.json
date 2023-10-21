@@ -4,6 +4,8 @@
 
 	// List of extensions which should be recommended for users of this workspace.
 	"recommendations": [
-		"james-yu.latex-workshop"
+		"james-yu.latex-workshop",
+		"yzhang.markdown-all-in-one",
+		"davidanson.vscode-markdownlint",
 	],
 }

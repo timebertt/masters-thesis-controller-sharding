@@ -8,3 +8,5 @@
     - etcd: CPU throttling, disk IOPS, WAL sync, DB sync
     - API server: CPU throttling, max inflight requests
     - webhosting-operator: CPU throttling, max active workers, ...
+- randomly kill instances/leader
+  - similar to [knative choasduck](https://github.com/knative/pkg/blob/main/leaderelection/chaosduck/main.go#L17)
