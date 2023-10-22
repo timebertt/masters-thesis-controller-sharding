@@ -26,8 +26,8 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
 
 ## Study Project
 
-- shortcomings
-- increased load tests
+- describe shortcomings
+- needs increased load tests
 
 - implementation on controller-side
 - implementation in controller-runtime, can be reused in other controllers based on controller-runtime
@@ -35,8 +35,10 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
   - CPU and memory usage are distributed
 - sharder component required
   - extra memory usage
+- assignments on a per-object basis needs to many reconciliations and API requests
 
 ## Requirement Analysis
 
-- sharder extra memory, CPU usage
-- generalization: independent from controller framework, programming language
+- eliminate extra CPU and memory usage by sharder
+- reduce API request volume and the number of reconciliations
+- generalization: server-side implementation, independent from controller framework, programming language

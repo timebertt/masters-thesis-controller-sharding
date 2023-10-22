@@ -1,0 +1,34 @@
+{
+    "version": "0.2",
+    "language": "en-US,de-DE",
+    "languageSettings": [
+        {
+            "languageId": "markdown",
+            "ignoreRegExpList": [
+                // pandoc references
+                "\\[(@|\\^).+\\]"
+            ]
+        },
+        {
+            "languageId": "bibtex",
+            "ignoreRegExpList": [
+                // reference definition
+                "@.+?\\{.+?,",
+                "^.+?="
+            ]
+        }
+    ],
+    "ignorePaths": [
+        "output-tex"
+    ],
+    "words": [
+        "chaosduck",
+        "DHBW",
+        "knative",
+        "kubernetes",
+        "pandoc",
+        "sharded",
+        "sharder",
+        "webhosting"
+    ]
+}

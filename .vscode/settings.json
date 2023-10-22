@@ -4,5 +4,15 @@
     "latex-workshop.latex.autoBuild.run": "never",
     "[markdown]": {
         "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
-    }
+    },
+    "cSpell.enableFiletypes": [
+        "bibtex",
+        "latex",
+        "markdown",
+        "markdown-math",
+        "markdown_latex_combined",
+        "python",
+        "yaml"
+    ],
+    "cSpell.language": "en,en-US,de-DE"
 }
