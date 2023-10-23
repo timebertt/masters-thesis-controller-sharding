@@ -2,6 +2,9 @@
 
 ## Community Work
 
+- namespace-based sharding
+- kind-based sharding
+
 ### knative
 
 See references in <https://github.com/timebertt/thesis-controller-sharding/issues/1>, tracking issue <https://github.com/knative/pkg/issues/1181>, documentation <https://knative.dev/docs/serving/config-ha/>.

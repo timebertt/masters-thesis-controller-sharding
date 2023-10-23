@@ -10,3 +10,9 @@
   - e.g., p99 queue time
 - non-goals
   - reduce API request volume of leader election
+
+## Distributed Databases
+
+### Partitioning
+
+### Storage Assignments

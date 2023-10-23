@@ -25,6 +25,7 @@
         "chaosduck",
         "DHBW",
         "knative",
+        "kube",
         "kubernetes",
         "pandoc",
         "sharded",
