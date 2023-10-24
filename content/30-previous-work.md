@@ -2,8 +2,10 @@
 
 ## Community Work
 
-- namespace-based sharding
-- kind-based sharding
+- namespace-based and kind-based sharding
+  - why it doesn't scale
+  - more watches because of less shared watches
+  - See <https://github.com/kubernetes/kubernetes/issues/14978#issuecomment-217507896>
 
 ### knative
 
@@ -26,6 +28,23 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
   - no fast failovers
 
 ### kube-state-metrics
+
+See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
+
+- horizontal sharding with multiple `Deployments`
+  - only serve a subset of object metrics
+  - all instances watch, marshal, and cache all objects!
+  - sharding benefit is only on the serving/scraping side -> quickly return to Prometheus
+  - each instance must have a shard index (`--shard`) and the total number of shards configured (`--total-shards`) -> no membership, failure detection, etc.
+  - partitioning using md5 of UID and modulo `--total-shards`
+  - coordination, object assignment not needed: Prometheus deduplicates time series (or rather the queries `without(instance)`)
+- automated horizontal sharding via `StatefulSet`
+  - automatically discover shard index and total number of shards
+  - rollout includes a downtime for each shard
+- sharding by node for pod metrics using `DaemonSet`
+  - watch with field selector for `spec.nodeName`
+  - distributes watch and cache across instances
+  - rollout includes a downtime for each shard
 
 ## Study Project
 
