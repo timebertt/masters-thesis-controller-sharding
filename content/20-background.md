@@ -8,6 +8,7 @@
 - define how scalability of controllers can be measured / SLIs
   - sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
   - sig-scalability tests
+  - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
   - e.g., p99 queue time
 - non-goals
   - reduce API request volume of leader election

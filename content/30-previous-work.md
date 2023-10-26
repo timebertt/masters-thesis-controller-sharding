@@ -58,9 +58,10 @@ See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
 - sharder component required
   - extra memory usage
 - assignments on a per-object basis needs to many reconciliations and API requests
+  - especially on rolling updates
 
 ## Requirement Analysis
 
-- eliminate extra CPU and memory usage by sharder
-- reduce API request volume and the number of reconciliations
-- generalization: server-side implementation, independent from controller framework, programming language
+- generalization: independent from controller framework and programming language
+- reduce CPU and memory overhead by sharder
+- reduce API request volume caused by assignments and coordination
