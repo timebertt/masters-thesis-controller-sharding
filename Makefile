@@ -48,7 +48,7 @@ open-html:
 plots: $(PLOT_PDF_FILES)
 
 $(PLOTS_DIR)/%.pdf: $(PLOTS_DIR)/%-plot.py $(PLOT_COMMON_PY_FILES) $(PLOT_CSV_FILES)
-	@echo "> Plotting $(@F)"
+	@echo "> Plotting $@"
 	@cd $(<D); ./$(<F)
 
 .PHONY: clean

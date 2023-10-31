@@ -57,10 +57,11 @@ Ideas:
 - move lease controller to controller manager as in step 1
 - teach API server to calculate assignments in watch cache, piggy-back on caches -> reduce resource overhead
 - make assignments transparent, don't persist in etcd -> reduce API request volume
-  - no resource version bumps, no watch events
+  - no resource version bumps, no watch events!?
   - how are are watch events triggered on assignment changes?
     - investigate how CR of CRDs handle this
-    - custom resource watch terminates when CRD spec/schema changes: <https://github.com/kubernetes/kubernetes/blob/746dfad769ad289bc06e411ada1e58cc0262461b/staging/src/k8s.io/apiextensions-apiserver/pkg/apiserver/customresource_handler.go#L504-L505>
+    - custom resource watch terminates when CRD spec/schema changes
+    - terminating the watch connection would cause a re-list
     - terminating watches on assignment changes is not enough
       - controller will restart the watch with the last observed resource version
       - without bumps to resource version, there will be no new watch events
@@ -73,7 +74,52 @@ Ideas:
     - doesn't work on owned objects
 - assignments and coordination must be consistent across API server instances
 
-## Approach 2: Slot-based Assignments
+## Approach 2: Assignments in Admission
+
+Goals:
+
+- reduce CPU/mem overhead
+- reduce API request volume
+
+Ideas:
+
+- move sharder controllers to controller manager or dedicated components
+- shard labels are added to objects during admission: either in admission plugin or webhook
+- when ring state changes, controller triggers reassignment or drain on all relevant objects
+- admission handles action 1 (new object or object drained)
+  - handles object-related events, that can be detected solely by mutating API requests to objects
+  - webhook adds significant latency to mutating API requests
+    - only needs to act on unassigned objects -> add object selector
+- controller handles action 2 and 3 (ring state changes)
+  - handles ring-related events, that can be detected solely by watch events for leases
+  - sharder controller doesn't need to watch objects, only needs watch for leases
+  - action 2 (new shard)
+    - list all objects and determine desired shard
+    - add drain label to all objects that are not assigned to desired shard
+  - action 3 (dead shard)
+    - list all objects assigned to dead shard
+    - reassign all objects immediately
+  - controller might interfere with itself (might act on a single object concurrently) -> use optimistic locking for all object mutations
+- controller and admission view on ring state could be slightly out of date
+  - objects might end up on "wrong" shards
+    - action 1: new shard just got ready, not observed by admission, new object incorrectly assigned to another shard
+    - action 2: sharder drains object, controller removes drain/shard label, admission assigns to the same shard again
+  - might be acceptable
+    - objects are only assigned to available shards
+    - single responsible shard is guaranteed
+    - doesn't violate original requirements
+  - if eventual consistency should still be guaranteed:
+    - periodically resyncs all leases
+    - determine objects that should not be assigned to that lease and reassign
+  - moving into a single component (running controller and serving webhook) doesn't solve the problem: will need to run multiple instances which watch individually again
+
+Summary:
+
+- trades resource overhead (object cache) for a few API requests (lists) and latency (webhook)
+- latency can be reduced with object selector and/or by moving to admission plugin
+- reduces API request volume a bit because drain and new assignment are now combined into a single API request
+
+## Approach 3: Slot-based Assignments
 
 Goals:
 
