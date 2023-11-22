@@ -46,6 +46,11 @@ See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
   - distributes watch and cache across instances
   - rollout includes a downtime for each shard
 
+### ArgoCD
+
+- <https://aws.amazon.com/blogs/opensource/argo-cd-application-controller-scalability-testing-on-amazon-eks/>
+- <https://cnoe.io/blog/argo-cd-application-scalability>
+
 ## Study Project
 
 - describe shortcomings

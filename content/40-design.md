@@ -112,6 +112,7 @@ Ideas:
     - periodically resyncs all leases
     - determine objects that should not be assigned to that lease and reassign
   - moving into a single component (running controller and serving webhook) doesn't solve the problem: will need to run multiple instances which watch individually again
+- webhooks need to be created for all objects that should be sharded
 
 Summary:
 
