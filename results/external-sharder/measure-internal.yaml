@@ -1,0 +1,11 @@
+# scenario: basic
+# measure -o results/external-sharder results/external-sharder/measure-internal.yaml --output-prefix internal- --start 2023-11-18T16:03:53Z --end 2023-11-18T16:18:53Z
+queries:
+- name: cpu
+  query: sum(rate(container_cpu_usage_seconds_total{namespace="webhosting-system", container="manager"}[2m])) by (namespace, pod)
+- name: memory
+  query: sum(container_memory_rss{namespace="webhosting-system", container="manager"}) by (namespace, pod)
+- name: network_receive
+  query: sum(irate(container_network_receive_bytes_total{namespace="webhosting-system", pod=~"webhosting-operator-.+"}[2m])) by (namespace, pod)
+- name: network_transmit
+  query: sum(irate(container_network_transmit_bytes_total{namespace="webhosting-system", pod=~"webhosting-operator-.+"}[2m])) by (namespace, pod)

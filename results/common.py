@@ -8,4 +8,4 @@ def read_data(filename):
     )
     ts_min = data.ts.min()
     data.ts = (data.ts - ts_min).astype('timedelta64[s]')
-    return data.pivot(index='ts', columns=data.columns.drop(labels=['ts', 'value']), values='value')
+    return data.pivot(index='ts', columns=['pod'], values='value')
