@@ -2,32 +2,14 @@
 
 ## Community Work
 
+- general ideas supported by many controllers/operators
 - namespace-based and kind-based sharding
   - why it doesn't scale
-  - more watches because of less shared watches
-  - See <https://github.com/kubernetes/kubernetes/issues/14978#issuecomment-217507896>
+  - more watches because of less shared watches, see <https://github.com/kubernetes/kubernetes/issues/14978#issuecomment-217507896>
+- Workload level:
+  - machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
 
-### knative
-
-See references in <https://github.com/timebertt/thesis-controller-sharding/issues/1>, tracking issue <https://github.com/knative/pkg/issues/1181>, documentation <https://knative.dev/docs/serving/config-ha/>.
-
-- controller HA (per-reconciler leader election) [@mooresharding]
-  - goal: fast failover for increased availability
-  - split reconcilers' keyspaces into buckets
-  - leader election per bucket
-    - extra API request volume
-  - implementation on controller-side
-  - reconcilers need to check whether they are responsible for an enqueued object
-  - all instances run all informers
-  - watches are not restricted to shard
-    - memory usage is not distributed, only CPU usage
-  - no guarantees about even distribution of buckets
-
-- StatefulSet-based controllers
-  - goal: bound worst-case downtime to 1/N, avoid SPOF
-  - no fast failovers
-
-### Prometheus
+## Prometheus
 
 - not controller-based sharding, but uses API machinery for service discovery
 - `modulus` in service discovery config: <https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config>
@@ -37,7 +19,7 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
   - scaling down shards does not reshard data onto remaining instances, it must be manually moved
   - scaling up shards does not reshard data, but it will continue to be available from the same instances
 
-### kube-state-metrics
+## kube-state-metrics
 
 See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
 
@@ -56,10 +38,43 @@ See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
   - distributes watch and cache across instances
   - rollout includes a downtime for each shard
 
-### ArgoCD
+## knative
+
+See references in <https://github.com/timebertt/thesis-controller-sharding/issues/1>, tracking issue <https://github.com/knative/pkg/issues/1181>, documentation <https://knative.dev/docs/serving/config-ha/>.
+
+- controller HA (per-reconciler leader election) [@mooresharding]
+  - goal: fast failover for increased availability
+  - split reconcilers' keyspaces into buckets
+  - leader election per bucket
+    - extra API request volume
+  - implementation on controller-side
+  - reconcilers need to check whether they are responsible for an enqueued object
+  - all instances run all informers
+  - watches are not restricted to shard
+    - memory usage is not distributed, only CPU usage
+  - no guarantees about even distribution of buckets
+
+- StatefulSet-based controllers
+  - goal: bound worst-case downtime to 1/N, avoid single point of failure
+  - no fast fail-overs
+
+## ArgoCD
 
 - <https://aws.amazon.com/blogs/opensource/argo-cd-application-controller-scalability-testing-on-amazon-eks/>
 - <https://cnoe.io/blog/argo-cd-application-scalability>
+
+## KubeVela
+
+See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
+
+- also uses labels to assign objects to shards
+- also uses webhook (in master) to add labels
+- dynamic shard discovery by default?
+- only runs shards for the "main" controller, other controllers still run in master
+- no resyncs: objects need to be recreated/assigned/reassigned manually
+  - when master is down, objects stay unassigned
+  - when assigned shard is down, objects are not moved
+- static shard names?
 
 ## Study Project
 
@@ -70,7 +85,7 @@ See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
 - implementation in controller-runtime, can be reused in other controllers based on controller-runtime
 - watches are restricted to shard
   - CPU and memory usage are distributed
-- sharder component required
+- sharder controller required
   - extra memory usage
 - assignments on a per-object basis needs to many reconciliations and API requests
   - especially on rolling updates

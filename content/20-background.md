@@ -19,14 +19,13 @@
   - watch controlled & owned objects
   - need to enqueue all objects on startup (might have missed relevant events)
 - can be implemented in any programming language (<https://kubernetes.io/docs/concepts/extend-kubernetes/operator/#writing-operator>)
+- only list actively maintained projects
 - frameworks/libraries implementing these mechanisms:
   - client-go (Go): <https://github.com/kubernetes/client-go>
   - controller-runtime (Go): <https://github.com/kubernetes-sigs/controller-runtime>
+  - Java Operator SDK: <https://javaoperatorsdk.io/>
   - kube-rs (Rust): <https://kube.rs/>
   - KubeOps (.NET): <https://buehler.github.io/dotnet-operator-sdk/>
-  - Java Operator SDK: <https://javaoperatorsdk.io/>
-    - event-triggered, uses queues
-    - [ ] caches objects?
 - other frameworks implementing conceptually different mechanisms:
   - Metacontroller: <https://metacontroller.github.io/metacontroller>
     - core controller implemented in Go
@@ -35,13 +34,11 @@
     - core controller implemented in Go
     - calls scripts for business logic
   - kopf (Python): <https://kopf.readthedocs.io/>
-    - designed around domain knowledge
+    - designed around modelling domain knowledge
     - event-driven: primarily handles watch events
     - stores handled state in annotation
     - stores controller state in status/annotation
     - leader election via `{Cluster,}KopfPeering` custom resources
-  - k8s-operator-node (NodeJS/TypeScript): <https://github.com/dot-i/k8s-operator-node>
-    - event-driven
 
 ## Scalability of Controllers
 
@@ -87,3 +84,12 @@
 - more ideas
   - makes precise vertical right-sizing more difficult, as resource consumption depends on leadership
   - big singleton controller loads only one API server, sharded setup better distributes load across API server instances -> not true for all cases: depends on control plane setup, HTTP2 usage
+  - see background in <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
+
+## Sharding
+
+- essential components?
+  - ref <https://github.com/kubernetes/kubernetes/issues/1064#issuecomment-57700433>
+  - ref Slicer [@slicer16]
+  - ref study project, chapter 2.7 [@studyproject]
+- why sharding enables horizontal scalability
