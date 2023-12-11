@@ -1,7 +1,7 @@
 # Evaluation
 
 - define scalability requirements / SLOs
-  - ref SLIs defined in background
+  - ref SLIs defined in fundamentals
   - p99 queue time < 1s
     - check k8s scalability goals
   - sharding assignment latency

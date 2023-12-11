@@ -6,6 +6,8 @@
 - namespace-based and kind-based sharding
   - why it doesn't scale
   - more watches because of less shared watches, see <https://github.com/kubernetes/kubernetes/issues/14978#issuecomment-217507896>
+- ingress controller sharding (by route)
+  - <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
 - Workload level:
   - machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
 
@@ -58,6 +60,14 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
   - goal: bound worst-case downtime to 1/N, avoid single point of failure
   - no fast fail-overs
 
+## Flux
+
+See <https://fluxcd.io/flux/installation/configuration/sharding/>.
+
+- label-based sharding
+- users need to set up multiple instances with distinct label selectors manually
+- users need to label objects manually, no automatic assignment to shards
+
 ## ArgoCD
 
 See:
@@ -100,6 +110,8 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
 
 - describe shortcomings
 - needs increased load tests
+
+Summary:
 
 - implementation on controller-side
 - implementation in controller-runtime, can be reused in other controllers based on controller-runtime

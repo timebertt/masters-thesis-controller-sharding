@@ -16,7 +16,9 @@
   - during creation: two requests are used for creation and initial assignment
   - during drain: three requests are used for starting drain, acknowledging drain, and reassignment
 
-## Non-Goals?
+## Non-Goals
+
+\todo[inline]{invert to positive goals}
 
 - reduce API request volume of leader election
 - leave the "controller ecosystem" / API machinery
