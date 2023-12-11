@@ -1,6 +1,6 @@
-# Previous Work
+# Related Work
 
-## Community Work
+## General Mechanisms
 
 - general ideas supported by many controllers/operators
 - namespace-based and kind-based sharding

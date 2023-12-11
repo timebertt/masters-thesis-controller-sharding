@@ -1,33 +1,28 @@
 # Design
 
-go over new requirements and suggest solutions
+## Overview
 
-How to address requirements:
+How to address new requirements:
 
 - generalization: independent from controller framework and programming language
-  - move partitioning, assignment, coordination logic to control plane
+  - move partitioning, assignment, coordination logic to external sharder
   - design how to configure which objects should be sharded
-    - best option: not configured at all, determined by watch requests
-    - -> transparent assignments
-- reduce CPU and memory overhead by sharder
-  - a: make slot-based assignments
-  - b: move assignments to API server: already has objects in cache
+- reduce memory overhead by sharder
+  - consider required actions again
+  - find different triggers for action 1 than using watch events
 - reduce API request volume caused by assignments and coordination
   - how to persist assignments efficiently? -> make assignments transparent without persistence?
   - is also reduced with slot-based assignments
-
-## Rough Ideas
-
 - keep lease-based membership
   - has to be implemented in all controller frameworks
   - necessary, no way around it
 
-## Step 1: Move Sharder to Control Plane
+## Step 1: External Sharder
 
 Goals:
 
 - generalization
-- will not reduce CPU/mem overhead, only move it to control plane
+- will not reduce CPU/mem overhead, only move it to an external component
 - will not reduce API request volume
 
 Ideas:
@@ -42,39 +37,9 @@ Ideas:
 Problems:
 
 - controller-side still has to comply with drain label
-  - must only be implemented once in the controller framework
-  - might be acceptable
+  - must only be implemented once in the controller framework, is acceptable
 
-## Approach 1: Transparent Assignments
-
-Goals:
-
-- reduce CPU/mem overhead
-- reduce API request volume
-
-Ideas:
-
-- move lease controller to controller manager as in step 1
-- teach API server to calculate assignments in watch cache, piggy-back on caches -> reduce resource overhead
-- make assignments transparent, don't persist in etcd -> reduce API request volume
-  - no resource version bumps, no watch events!?
-  - how are are watch events triggered on assignment changes?
-    - investigate how CR of CRDs handle this
-    - custom resource watch terminates when CRD spec/schema changes
-    - terminating the watch connection would cause a re-list
-    - terminating watches on assignment changes is not enough
-      - controller will restart the watch with the last observed resource version
-      - without bumps to resource version, there will be no new watch events
-      - we still can't be sure if the controller observed the change
-- preventing concurrency: how is drain handled?
-  - reassignment could send a `DELETE` event just like a label change on watches with label selector
-  - API servers need to ensure that the client observed the change
-  - client sends assignment label back to API server in patch/update request as prerequisite
-    - request is rejected with a conflict error if assignment doesn't match (similar to optimistic locking)
-    - doesn't work on owned objects
-- assignments and coordination must be consistent across API server instances
-
-## Approach 2: Assignments in Admission
+## Step 2: Assignments in Admission
 
 Goals:
 
@@ -88,6 +53,8 @@ Ideas:
 - when ring state changes, controller triggers reassignment or drain on all relevant objects
 - admission handles action 1 (new object or object drained)
   - handles object-related events, that can be detected solely by mutating API requests to objects
+  - currently, watch events (~cache) for the sharded objects are used for this
+  - with assignments in admission, watches and caches can be dropped
   - webhook adds significant latency to mutating API requests
     - only needs to act on unassigned objects -> add object selector
 - controller handles action 2 and 3 (ring state changes)
@@ -120,6 +87,38 @@ Summary:
 - latency can be reduced with object selector and/or by moving to admission plugin
 - reduces API request volume a bit because drain and new assignment are now combined into a single API request
 
+<!--
+## Approach 1: Transparent Assignments
+
+Goals:
+
+- reduce CPU/mem overhead
+- reduce API request volume
+
+Ideas:
+
+- move lease controller to controller manager as in step 1
+- teach API server to calculate assignments in watch cache, piggy-back on caches -> reduce resource overhead
+- make assignments transparent, don't persist in etcd -> reduce API request volume
+  - no resource version bumps, no watch events!?
+  - how are are watch events triggered on assignment changes?
+    - investigate how CR of CRDs handle this
+    - custom resource watch terminates when CRD spec/schema changes
+    - terminating the watch connection would cause a re-list
+    - terminating watches on assignment changes is not enough
+      - controller will restart the watch with the last observed resource version
+      - without bumps to resource version, there will be no new watch events
+      - we still can't be sure if the controller observed the change
+- preventing concurrency: how is drain handled?
+  - reassignment could send a `DELETE` event just like a label change on watches with label selector
+  - API servers need to ensure that the client observed the change
+  - client sends assignment label back to API server in patch/update request as prerequisite
+    - request is rejected with a conflict error if assignment doesn't match (similar to optimistic locking)
+    - doesn't work on owned objects
+- assignments and coordination must be consistent across API server instances
+-->
+
+<!--
 ## Approach 3: Slot-based Assignments
 
 Goals:
@@ -140,3 +139,4 @@ Ideas:
   - too high request volume for coordination (ref knative)
 - shard needs to acknowledge slot movement
   - include some kind of observed generation number of assignments in regular lease updates
+-->
