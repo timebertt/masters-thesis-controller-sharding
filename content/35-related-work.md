@@ -60,8 +60,28 @@ See references in <https://github.com/timebertt/thesis-controller-sharding/issue
 
 ## ArgoCD
 
-- <https://aws.amazon.com/blogs/opensource/argo-cd-application-controller-scalability-testing-on-amazon-eks/>
-- <https://cnoe.io/blog/argo-cd-application-scalability>
+See:
+
+- benchmarks:
+  - <https://aws.amazon.com/blogs/opensource/argo-cd-application-controller-scalability-testing-on-amazon-eks/>
+  - <https://cnoe.io/blog/argo-cd-application-scalability>
+- docs:
+  - <https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/#argocd-application-controller>
+  - <https://www.infracloud.io/blogs/sharding-clusters-across-argo-cd-application-controller-replicas/>
+  - <https://argocd-operator.readthedocs.io/en/latest/reference/argocd/#controller-options>
+- initial implementation: <https://github.com/argoproj/argo-cd/issues/4284>
+- dynamic rebalancing: <https://github.com/argoproj/argo-cd/pull/15036>
+  - <https://github.com/argoproj/argo-cd/blob/master/docs/proposals/rebalancing-clusters-across-shards-dynamically.md>
+
+Summary:
+
+- application controller is sharded by cluster (shard key = cluster)
+- all applications on one cluster are assigned to the same shard
+- shard can be assigned manually in cluster secret
+- algorithm:
+  - legacy: `hash(cluster secret UID) % replicas`
+  - now: round-robin
+- supports dynamic scaling based on clusters per shard
 
 ## KubeVela
 
