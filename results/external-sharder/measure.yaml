@@ -1,0 +1,13 @@
+# scenario: basic
+# measure -o results/external-sharder results/external-sharder/measure.yaml --output-prefix external- --start 2023-12-12T10:40:28Z --end 2023-12-12T10:55:28Z
+# measure -o results/external-sharder results/external-sharder/measure.yaml --output-prefix internal- --start 2023-12-12T13:08:30Z --end 2023-12-12T13:23:30Z
+# measure -o results/external-sharder results/external-sharder/measure.yaml --output-prefix singleton- --start 2023-12-12T13:31:37Z --end 2023-12-12T13:46:37Z
+queries:
+- name: cpu
+  query: sum(rate(container_cpu_usage_seconds_total{namespace=~"sharding-system|webhosting-system", container=~"sharder|manager"}[2m])) by (namespace, pod)
+- name: memory
+  query: sum(go_memory_classes_total_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_released_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_unused_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_free_bytes{namespace=~"sharding-system|webhosting-system"}) by (namespace, pod)
+- name: network_receive
+  query: sum(irate(container_network_receive_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)
+- name: network_transmit
+  query: sum(irate(container_network_transmit_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)
