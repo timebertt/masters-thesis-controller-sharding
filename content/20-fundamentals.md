@@ -2,18 +2,76 @@
 
 ## API Machinery
 
-- Kubernetes is a declarative system [@k8sdocs]
-- asynchronous, eventually consistent [@brewer2000towards; @vogels2008eventually]
-- users declare the desired state
-- system state (desired and actual) is stored in etcd
-- API server serves state via REST HTTP endpoints
-- adds API machinery: API discovery, API extensions, admission webhooks, Authentication/Authorization, watch requests
+Kubernetes is an open-source system for orchestrating container-based applications [@soltesz2007container] and cloud native infrastructure [@cncftoc] on clusters of machines.
+It is an API-centric and declarative system, in which clients specify the desired state of applications and infrastructure instead of managing them via imperative commands.
+This approach is an essential aspect of the reliability, scalability, and manageability of Kubernetes. [@k8sdesign]
+
+The architecture of Kubernetes can be separated into two parts: the control plane and the data plane.
+The control plane oversees the cluster's state and orchestrates various operations, while the data plane executes workload containers and serves application traffic.
+The core of the control plane is the API server which stores the cluster's metadata and state in etcd, a highly-available key-value store that acts as the source of truth for the entire cluster [@etcddocs].
+The state is specified and managed in the form of objects via RESTful [@fielding2000architectural] HTTP endpoints (resources).
+All clients – human and machine clients – interact with the system through these resources. [@k8sdocs]
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: dev
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+status:
+  availableReplicas: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
+```
+
+: Example API object {#lst:deployment}
+
+The Kubernetes resource model specifies patterns that all API resources follow.
+Notably, both desired and actual state are stored together in etcd.
+[@Lst:deployment] shows an example object of the `deployments` resource in its YAML representation, including the common set of fields and sections: `apiVersion`, `kind`, `metadata`, `spec`, and `status`.
+The `apiVersion` and `kind` fields combined map to the API resource, i.e., the particular API endpoint for retrieving and updating the given object.
+All objects are referenced by name (`metadata.name`) and optionally – depending on the API resource – grouped into namespaces (`metadata.namespace`).
+
+The `spec` section contains the desired state of the object, while the `status` section holds the actual state as reported by the responsible controller.
+Although desired and actual state are stored and managed together, the `status` section can only be updated by calling the `/status` subresource of the API resource.
+This allows segregating authorization policies between individual API clients like users and controllers.
+
+In contrast to imperative systems, Kubernetes strictly follows a declarative paradigm.
+Imperative commands like `kubectl set image` [@k8sdocs] only modify the desired state, requesting the controllers to reconcile the actual state with the declared state.
+
+In addition to serving endpoints for creating, updating, and deleting objects, the API server enhances the core functionality with a comprehensive set of API machinery.
+This includes API discovery, versioning, defaulting, validation, authentication, authorization, and extensibility [@studyproject].
+The most important mechanism in Kubernetes API machinery for this thesis are: watch requests, label selectors, optimistic locking, admission webhooks and owner references.
+Hence, they are described in more detail.
+
+- watch requests
+- label selectors
+- optimistic locking
+- admission webhooks
+- ownerReferences and garbage collection
 
 ## Controller Machinery
 
 - controllers drive the actual state to match the desired state (reconciliations)
-- can reconcile any API resources: built-in and extended
+- asynchronous, eventually consistent [@brewer2000towards; @vogels2008eventually]
 - watch objects to get notified about changes
+- can reconcile any API resources: built-in and extended
 - controller building blocks?
 - important aspects
   - queue deduplicates keys, prevents concurrent reconciliations in multiple worker routines
