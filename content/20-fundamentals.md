@@ -2,9 +2,10 @@
 
 ## API Machinery
 
-- Kubernetes is a declarative system
+- Kubernetes is a declarative system [@k8sdocs]
+- asynchronous, eventually consistent [@brewer2000towards; @vogels2008eventually]
 - users declare the desired state
-- system state is stored in etcd
+- system state (desired and actual) is stored in etcd
 - API server serves state via REST HTTP endpoints
 - adds API machinery: API discovery, API extensions, admission webhooks, Authentication/Authorization, watch requests
 
@@ -51,9 +52,10 @@
   - system is event-triggered, level-driven
 - define how scalability of controllers can be measured / SLIs
   - sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
+  - scalability thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
   - sig-scalability tests
   - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
-  - e.g., p99 queue time
+  - define SLOs: e.g., p99 queue time
 
 ## Leader Election
 
@@ -67,9 +69,9 @@
   - wraps entire process, only executes controller when lock is acquired, terminates when lost
 - multiple instances
   - only a single active leader at a time
-  - active-passive HA setup
+  - active-passive HA setup [@ahluwalia2006high]
   - fast fail-overs
-  - NOT horizontal scaling
+  - NOT horizontal scaling [@bondi2000characteristics; @jogalekar2000evaluating]
 
 ## Scalability Limitations
 

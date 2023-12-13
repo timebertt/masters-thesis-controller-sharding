@@ -9,9 +9,12 @@
     - Metacontroller: <https://github.com/GoogleCloudPlatform/metacontroller/issues/190>
 - large-scale Kubernetes-based and controller-based deployments
 - core Kubernetes components scale well
-- sig-scalability cares about scalability of core components, but core components only
+  - sig-scalability cares about scalability of core components, but core components only [@k8scommunity]
+  - scalability thresholds, e.g., 5k nodes [@k8scommunity]
 - but external components like custom controllers are not included in scalability considerations/guarantees
+  - <https://twitter.com/ibuildthecloud/status/1720493578756223226>
 - custom controllers need to scale
+  - <https://twitter.com/ibuildthecloud/status/1717369625904848945>
 - custom controllers/operators typically facilitate heavier reconciliation processes compared to core controllers [@kubevela]
 - some projects with large-scale deployments have already implemented sharding on their own
 - highly specific to individual projects, cannot be reused
