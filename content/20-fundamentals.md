@@ -58,13 +58,64 @@ Imperative commands like `kubectl set image` [@k8sdocs] only modify the desired 
 In addition to serving endpoints for creating, updating, and deleting objects, the API server enhances the core functionality with a comprehensive set of API machinery.
 This includes API discovery, versioning, defaulting, validation, authentication, authorization, and extensibility [@studyproject].
 The most important mechanism in Kubernetes API machinery for this thesis are: watch requests, label selectors, optimistic locking, admission webhooks and owner references.
-Hence, they are described in more detail.
 
-- watch requests
-- label selectors
-- optimistic locking
-- admission webhooks
-- ownerReferences and garbage collection
+Watch requests are a specialized form of list requests, distinguishable by the inclusion of the `watch=true` query parameter.
+As for list requests, watch requests target all or a filtered set of objects of a single API resource.
+Clients start a long-running watch request to subscribe to change events of the cluster's state.
+Watch events are categorized as `ADDED`, `MODIFIED`, or `DELETED`, denoting different types of changes to the watched resource.
+Each watch event contains the new state of the respective object.
+This allows clients to build up a local cache of objects, from which they can read instead of contacting the API server. [@k8sdocs]
+
+Under the hood, the Kubernetes API server leverages the watch feature of etcd [@etcddocs].
+The API server watches a resource only once in etcd and maintains a short history of revisions within its internal watch cache.
+Client watch requests are multiplexed onto a single watch connection to etcd through this cache.
+Watch requests can request change events starting from a specific revision in the kept history by setting the `resourceVersion` query parameter accordingly.
+Typically, clients start the process with an initial list request, followed by a watch request with the `resourceVersion` parameter set to the value returned in the list response.
+
+When the watch connection is interrupted, clients can resume change notifications by initiating a new watch request and specifying the last observed `resourceVersion`.
+This mechanism ensures continuity in monitoring the cluster state, allowing clients to pick up where they left off.
+As Kubernetes is a distributed system, delays and timeouts of watch requests can occur at any time.
+Thus, clients must always expect that the state observed via watch requests is slightly out-of-date. [@k8sdesign]
+
+Standard get and list requests utilize quorum read operations from etcd by default.
+However, when the `resourceVersion` parameter is set, the API server responds based on its internal watch cache without directly querying etcd.
+This can be used to retrieve a specific recent revision of objects, or the latest revision of objects as observed by the API servers watch connection to etcd. [@k8sdocs]
+
+Label selectors can be added to list and watch requests for filtering API objects based on key-value pairs in their `metadata.labels`.
+Note that the API server always retrieves the complete list of objects from etcd or events from its watch cache.
+It subsequently filters the objects or events based on the specified label criteria and transmits the filtered list to the client.
+This approach reduces the transferred data size, the effort for encoding and decoding in API server and client, and the needed memory on the client-side.
+However, it does neither reduce the transferred data size between etcd and API server nor the effort for processing objects and events in the API server.
+
+Additionally, field selectors offer another option for filtering objects, based on specific field values.
+However, this mechanism is exclusive to built-in resources and resources served by extension API servers [@studyproject].
+Notably, only fields pre-defined by the API server can be used in selectors, eliminating the possibility of ad-hoc field queries.
+Internally, the API server indexes the pre-defined fields in its watch cache to reduce processing and selection effort for watch requests.
+Because of this, the application of field selectors is confined to very specific cases, limiting their utility in a broader context.
+
+The Kubernetes API server resolves conflicts between concurrent updates through optimistic locking [@harder1984observations].
+This mechanism is built upon etcd's multi-version concurrency control architecture [@etcddocs].
+A key component in this approach is the `metadata.resourceVersion` field embedded in all objects, representing the specific revision of an object in the cluster.
+Clients performing update or patch requests transmit the `resourceVersion` associated with their intended changes.
+The API server, in turn, compares this version with the current `resourceVersion` of the object stored in etcd.
+Conflict errors are triggered if the versions do not align, resulting in the denial of the requested changes.
+This concurrency control mechanism ensures data consistency and integrity, enabling to handle simultaneous updates from multiple clients without active locking. [@k8sdocs]
+
+The API server has internal admission plugins that perform dynamic validation and mutations to requests after API validation and defaulting.
+Apart from admission plugins for built-in resources, the admission control logic can be augmented during runtime by the use of webhooks.
+These webhooks are applicable to both built-in and custom resources and are registered through `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects.
+A webhook configuration defines which server should be invoked for specific requests and allows selection based on the requested resource, the operation type, as well as namespace and object labels.
+When a relevant request is made, the API server dispatches an `AdmissionReview` object including the requested object and relevant request metadata to the designated webhook server.
+After processing the `AdmissionReview` object, the webhook server responds with a validation result, and in the case of mutating webhooks, may include optional patches to be applied to the object.
+The API server considers the returns validation result and optionally applies the returned patches to the object before storing the updated object in etcd. [@k8sdocs]
+
+All Kubernetes API objects can reference owning objects for establishing relationships between objects.
+Controllers can mark objects owned by other objects by setting the `metadata.ownerReferences` field accordingly.
+The garbage collector in the Kubernetes controller manager ensures that owned objects are deleted when all its owners have been deleted.
+An API object can have multiple owner references but only one of them may set the `controller` field to `true` (controller reference).
+This mechanism is used to resolve conflicts where multiple objects select an overlapping set of owned objects.
+For this, controllers adopt owned objects by setting the respective controller reference first before acting on them.
+Typically, API objects have only one owner reference which also the controller reference. [@k8s]
 
 ## Controller Machinery
 
