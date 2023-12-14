@@ -119,36 +119,48 @@ Typically, API objects have only one owner reference which also the controller r
 
 ## Controller Machinery
 
-- controllers drive the actual state to match the desired state (reconciliations)
-- asynchronous, eventually consistent [@brewer2000towards; @vogels2008eventually]
-- watch objects to get notified about changes
-- can reconcile any API resources: built-in and extended
+As described in the previous section, Kubernetes facilitates declarative configuration management.
+When clients declare the desired state of an API object, the API server accepts the change and stores it in etcd, but it does not perform the necessary changes to fulfill the desired state.
+When a new object is created or deleted, or the specification of an existing object is changed, the responsible controller needs to pick up the change to drive the actual state to match the desired state.
+This process is referred to as reconciliation.
+Although controllers use watch events to get notified about changes, the system is asynchronous and only eventually consistent [@brewer2000towards; @vogels2008eventually].
+
+Controllers can reconcile arbitrary API resources: built-in resources as well as extended resources registered via `CustomResourceDefinitions` or served by extension API servers.
+This makes controllers a powerful mechanism for orchestrating applications and infrastructure according to the user's needs.
+The Kubernetes components include controllers for implementing the core API resources, but additional controllers can be installed in the cluster as desired.
+Controllers working with extended API resources for automating application-specific operations are commonly referred to as operators. [@k8sdocs]
+
+At the core, controllers watch and manipulate the cluster's state using a standard Kubernetes client.
+All operations on API objects are performed via the usual endpoints served by the API server.
+As such, controllers are stateless components, as all state is persisted externally.
+If a controller is restarted or crashes, it can pick up earlier work by reading the current state from the API server again.
+
+![Building blocks of a controller [@samplecontroller]](../assets/controller-components.jpg)
+
+\todo{Replace with custom diagram}
+
 - controller building blocks?
 - important aspects
+  - queue only contains object keys, controller always read actual object from cache
   - queue deduplicates keys, prevents concurrent reconciliations in multiple worker routines
   - watch controlled & owned objects
   - need to enqueue all objects on startup (might have missed relevant events)
-- can be implemented in any programming language (<https://kubernetes.io/docs/concepts/extend-kubernetes/operator/#writing-operator>)
-- only list actively maintained projects
-- frameworks/libraries implementing these mechanisms:
-  - client-go (Go): <https://github.com/kubernetes/client-go>
-  - controller-runtime (Go): <https://github.com/kubernetes-sigs/controller-runtime>
-  - Java Operator SDK: <https://javaoperatorsdk.io/>
-  - kube-rs (Rust): <https://kube.rs/>
-  - KubeOps (.NET): <https://buehler.github.io/dotnet-operator-sdk/>
-- other frameworks implementing conceptually different mechanisms:
-  - Metacontroller: <https://metacontroller.github.io/metacontroller>
-    - core controller implemented in Go
-    - calls webhooks for business logic (can be implemented in any language)
-  - shell-operator: <https://flant.github.io/shell-operator/>
-    - core controller implemented in Go
-    - calls scripts for business logic
-  - kopf (Python): <https://kopf.readthedocs.io/>
-    - designed around modelling domain knowledge
-    - event-driven: primarily handles watch events
-    - stores handled state in annotation
-    - stores controller state in status/annotation
-    - leader election via `{Cluster,}KopfPeering` custom resources
+
+Kubernetes controllers can be implemented in any programming language that can interact with the API server via standard HTTP requests.
+Many libraries and frameworks are available that implement Kubernetes clients and reusable building blocks for controllers as described above.
+The following list includes popular controller libraries that are actively maintained at the time of writing: [@k8sdocs]
+
+- **client-go** is the official Kubernetes client in Go that is also used by Kubernetes core components themselves. It provides great flexibility but requires a deep understand of controller concepts and a lot of boilerplate code. [@clientgo]
+- **controller-runtime** offers useful abstractions on top of the core implementations in client-go that makes it easier to implement controllers in Go. This library is the foundation for higher-level generative tooling like Kubebuilder and Operator SDK. [@controllerruntime; @kubebuilderbook; @operatorsdk]
+- **Java Operator SDK** implements similar abstractions as controller-runtime for controllers written in Java. [@javaoperatorsdk]
+- **kube-rs** offers similar abstractions and tooling as client-go, controller-runtime, and Kubebuilder for controllers written in Rust. [@kubers]
+
+There are also other frameworks available for implementing Kubernetes controllers that deviate conceptually from the typical controller mechanisms described above.
+For example:
+
+- **Metacontroller** is a controller implemented in Go that allows specifying controllers declaratively. It runs the common part of custom controllers and calls webhooks that implement the business logic of the custom controller. The webhook servers can be implemented in any programming language. [@metacontroller]
+- **shell-operator** is a controller implemented in Go that allows running shell scripts for handling watch events. [@shelloperator]
+- **kopf** is a framework for building controllers in python designed around modelling domain knowledge. In contrast to the typical controller structure, it is implemented in an event-driven manner and directly handles watch events instead of enqueueing objects for reconciliation in worker routines. It also stores the state handled by the controller and the state of the controller itself in the API object. [@kopf]
 
 ## Scalability of Controllers
 
