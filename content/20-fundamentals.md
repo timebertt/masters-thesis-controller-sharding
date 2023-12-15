@@ -184,21 +184,25 @@ For example:
 - **shell-operator** is a controller implemented in Go that allows running shell scripts for handling watch events. [@shelloperator]
 - **kopf** is a framework for building controllers in python designed around modelling domain knowledge. In contrast to the typical controller structure, it is implemented in an event-driven manner and directly handles watch events instead of enqueueing objects for reconciliation in worker routines. It also stores the state handled by the controller and the state of the controller itself in the API object. [@kopf]
 
-## Scalability of Controllers
+The scalability of Kubernetes controllers is underpinned by several key mechanisms, reflecting learnings from running Kubernetes at scale.
+Most importantly, watch requests play an essential role in running controllers for large-scale clusters by leveraging change notifications rather than relying on polling mechanisms.
+This approach significantly reduces unnecessary communication overhead and ensures controllers can promptly react to relevant changes in the cluster state.
+Built on that, controllers maintain a local cache, which is continually synchronized based on watch events received from the API server.
+By storing all relevant state locally, controllers reduce the need to contact the API server for every reconciliation, thereby minimizing latency and enhancing overall system scalability.
+Controllers always read the object to be reconciled from the watch cache instead of interacting with the API server.
 
-- what already makes Kubernetes controllers scalable
-  - watch requests
-  - no polling, change notifications
-  - controllers store all necessary state locally
-  - don't contact API server for every reconciliation
-  - can immediately react on changes
-  - system is event-triggered, level-driven
-- define how scalability of controllers can be measured / SLIs
-  - sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
-  - scalability thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
-  - sig-scalability tests
-  - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
-  - define SLOs: e.g., p99 queue time
+Furthermore, the use of filtered watches enhances the scalability of the system by reducing the volume of data processed and stored by controllers.
+For instance, the kubelet employs a field selector for the `spec.nodeName` field in `Pods`, to filter watch requests for `Pods` running on the `Node` the kubelet is responsible for.
+
+In situations with a high rate of changes or latency of watch connections, controllers might read an outdated version of the object from the cache.
+When this happens, the controller might run into a conflict error when updating the object on the API server due the usage of optimistic concurrency control.
+In case of errors like conflicts, controllers rely on an exponential backoff mechanism to retry reconciliations until the cache is up-to-date with the current state and the reconciliation can be performed successfully.
+This way, consistency is guaranteed in an eventual fashion, while reducing the average amount of API requests and network transfer needed for reconciliations.
+With this, optimistic concurrency control contributes to the scalability of Kubernetes controllers by facilitating safe concurrent state changes by a high number of different actors.
+
+Concurrent worker routines are another factor in achieving scalability.
+By starting multiple processors of reconciliation requests, multiple tasks for different objects can be executed concurrently.
+This approach enhances throughput, decreases queue wait times, and contributes to the overall scalability of the system.
 
 ## Leader Election
 
@@ -215,6 +219,44 @@ For example:
   - active-passive HA setup [@ahluwalia2006high]
   - fast fail-overs
   - NOT horizontal scaling [@bondi2000characteristics; @jogalekar2000evaluating]
+
+## Scalability of Controllers
+
+- sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
+  - guarantees certain SLOs if cluster is within thresholds
+  - if SLOs are not met while keeping thresholds, means scalability goals are not met
+  - if thresholds can be increased while keeping SLOs, means greater scalability of the system
+  - thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
+    - mostly related to number of objects
+    - some related to query/change rates
+    - also, churn <= 20/s: `#(Pod spec creations/updates/deletions) + #(user originated requests) per second`
+  - SLOs: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md>
+  - official SLOs (non-WIP):
+    - mutating API call latency: p99 <= 1s
+    - read-only API call latency (non-streaming): p99 <= 1s (read single object), p99 <= 30s (read multiple objects)
+    - startup latency of schedulable, stateless pods (excluding image pull) and observed by watch: p99 <= 5s
+  - WIP SLOs:
+    - in-cluster network programming latency, DNS programming latency
+    - in-cluster network latency, DNS lookup latency
+    - API-related latencies: watch, admission, webhook
+  - sig-scalability tests
+  - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
+- define how scalability of controllers can be measured
+  - environment requirements/prerequisites
+    - reasonable API server latency
+  - thresholds
+    - number of objects
+    - object churn: creation/update rate (reconciliation rate ~ "throughput")
+  - controller SLIs / SLOs
+    - reconciliation latency, e.g., creation/change to ready
+    - queue time: p99 < 1s
+    - webhook call latency (if controller has webhooks)
+  - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater scalability
+- factors that influence scalability
+  - resource limits
+  - network bandwidth
+  - how to consider actual usage (better measurement for size/cost of controllers)
+  - number of worker routines
 
 ## Scalability Limitations
 

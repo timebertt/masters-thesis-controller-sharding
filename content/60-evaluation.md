@@ -15,4 +15,7 @@
   - similar to [knative chaosduck](https://github.com/knative/pkg/blob/main/leaderelection/chaosduck/main.go#L17)
 - rolling updates of controller
 - horizontal (auto-)scaling of controller during load
-- show that more replicas bring more performance / proportionally decrease the load
+- show that more replicas bring more performance, allow increasing the thresholds while keeping SLOs
+  - this is what proves that controllers are horizontally scalable now!
+  - load in individual instances is proportionally decreased
+- show that overhead of sharding is constant, independent of number of objects

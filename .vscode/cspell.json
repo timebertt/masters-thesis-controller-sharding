@@ -28,6 +28,7 @@
         "kube",
         "kubernetes",
         "pandoc",
+        "schedulable",
         "sharded",
         "sharder",
         "webhosting"
