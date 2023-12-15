@@ -86,6 +86,7 @@ Note that the API server always retrieves the complete list of objects from etcd
 It subsequently filters the objects or events based on the specified label criteria and transmits the filtered list to the client.
 This approach reduces the transferred data size, the effort for encoding and decoding in API server and client, and the needed memory on the client-side.
 However, it does neither reduce the transferred data size between etcd and API server nor the effort for processing objects and events in the API server.
+\todo{watch events with label selectors on label changes}
 
 Additionally, field selectors offer another option for filtering objects, based on specific field values.
 However, this mechanism is exclusive to built-in resources and resources served by extension API servers [@studyproject].
@@ -135,16 +136,37 @@ All operations on API objects are performed via the usual endpoints served by th
 As such, controllers are stateless components, as all state is persisted externally.
 If a controller is restarted or crashes, it can pick up earlier work by reading the current state from the API server again.
 
+The core components of Kubernetes controllers are: watch cache, event handlers, work queue, and worker routines.
+A controller's cache is responsible for monitoring the object type on the API server, notifying the controller of changes to the objects, and maintaining the objects in memory as an indexed store.
+To achieve this, a reflector is initiated, which lists and watches the specified object type, emitting delta events added to a queue.
+Subsequently, an informer reads events from the queue, updating the store with changed objects.
+The store, a flat key-value store with additional indices, enhances the performance of frequently used namespaced queries by controllers or queries with field selectors.
+Controllers can utilize caches for multiple object types, and typically, these caches are shared among all controllers within a single binary to optimize CPU and memory usage.
+Additionally, caches can be configured to use filtered list and watch requests to reduce overhead for controllers not interested in certain objects. [@studyproject]
+
 ![Building blocks of a controller [@samplecontroller]](../assets/controller-components.jpg)
 
 \todo{Replace with custom diagram}
 
-- controller building blocks?
-- important aspects
-  - queue only contains object keys, controller always read actual object from cache
-  - queue deduplicates keys, prevents concurrent reconciliations in multiple worker routines
-  - watch controlled & owned objects
-  - need to enqueue all objects on startup (might have missed relevant events)
+The watch cache (the informer) also dispatch watch events to event handlers registered by controllers.
+Event handlers typically filter relevant changes based on the updated object, minimizing unnecessary reconciliation work.
+If necessary, event handlers enqueue the object's key (`namespace/name`) to the work queue.
+Event handlers may also perform mappings between watched objects and objects the controller is responsible for.
+For example, the `Job` controller also watches `Pods` and enqueues the owning `Job` when the corresponding `Pod` finishes its work.
+On startup of a controller, it receives `ADDED` events for all existing objects.
+To prevent inconsistencies due to watch events missed during a previous downtime, controllers should reconcile all objects on startup. [@studyproject]
+
+The controller's work queue lines up keys of objects requiring reconciliation, decoupling event handling and reconciliation.
+The work queue ensures that each object key is processed by a single worker at a time and deduplicates keys added multiple times.
+If a key of an object that is currently being reconciled is added to the queue again, it will only be reconciled once the ongoing work has finished.
+The queue also implements retries with exponential backoff and rate limiting for failed items.
+
+Worker routines execute the controller's business logic (reconciliation), picking a single key from the work queue at a time.
+After picking a key from the queue and marking it as being worked on, workers retrieve the full object from the watch cache and perform reconciliation as required based on the state read from the cache.
+Notably, controllers should not be purely event-driven.
+Instead, controllers are designed to be edge-triggered but level-driven.
+In other words, controllers must always act on the entire observed state of the cluster and not only based on an observed change.
+Change notifications are only an optimization for immediately triggering reconciliations when required. [@studyproject; @k8sdesign; @hausenblas2019programming]
 
 Kubernetes controllers can be implemented in any programming language that can interact with the API server via standard HTTP requests.
 Many libraries and frameworks are available that implement Kubernetes clients and reusable building blocks for controllers as described above.
