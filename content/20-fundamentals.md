@@ -206,19 +206,51 @@ This approach enhances throughput, decreases queue wait times, and contributes t
 
 ## Leader Election
 
-- why it is needed
-  - prevent concurrent reconciliations of a single object
-  - reconciliations are not coordinated between multiple instances
-  - can lead to conflicting actions
-- how it is realized
-  - fulfills requirement to prevent concurrent reconciliations of a single object in multiple controllers
-  - but on the global level
-  - wraps entire process, only executes controller when lock is acquired, terminates when lost
-- multiple instances
-  - only a single active leader at a time
-  - active-passive HA setup [@ahluwalia2006high]
-  - fast fail-overs
-  - NOT horizontal scaling [@bondi2000characteristics; @jogalekar2000evaluating]
+In Kubernetes controllers, the leader election mechanism addresses critical requirements for managing reconciliations across multiple instances.
+Without coordination, simultaneous reconciliations executed by different controller instances can lead to conflicting actions and compromise the integrity of the system.
+To prevent concurrent reconciliations of a single object, a mechanism for establishing a leader among multiple instances is used. [@studyproject]
+
+Kubernetes offers a designated `Lease` API resource and each controller deployment uses a single central `Lease` object ([@lst:lease]) to perform leader election.
+On startup, a race determines the leader among running instances, with the first to acquire the lease assuming the leadership role.
+Only the leader is allowed to execute reconciliations, ensuring a singular point of control.
+
+```yaml
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  creationTimestamp: "2023-12-05T10:07:29Z"
+  name: gardener-controller-manager
+  namespace: garden
+  resourceVersion: "47821525"
+  uid: c609a301-05b2-4de1-beb9-15e710dfba4f
+spec:
+  acquireTime: "2023-12-05T10:49:04.472127Z"
+  holderIdentity: gardener-controller-manager-86944bbdcb-q4d68
+  leaseDurationSeconds: 15
+  leaseTransitions: 3
+  renewTime: "2023-12-15T13:13:59.022104Z"
+```
+
+: Example Lease {#lst:lease}
+
+The Lease object is always acquired for a specified duration, as defined in the `spec.leaseDurationSeconds`.
+The leader must continually renew the lease to maintain the leadership.
+If the leader fails to renew the lease, it must stop all reconciliations.
+When the lease expires, other instances are permitted to contend for leadership, resulting in a leadership change.
+In scenarios where an instance is terminated, such as during rolling updates, the leader can be voluntarily release the lease to speed up leadership handovers and minimize disruption.
+
+Leader election ensures that only a single active leader exists at any given time.
+Deploying multiple instances of the same controller thereby establishes an active-passive high-availability (HA) setup [@ahluwalia2006high].
+This configuration allows for fast fail-overs, as another instance on standby is ready to assume the leadership role.
+It is important to note that this approach is distinct from horizontal scaling, as it maintains a single leader rather than distributing the workload across multiple controllers [@bondi2000characteristics; @jogalekar2000evaluating].
+
+While leader election satisfies the requirement to prevent concurrent reconciliations of a single object across multiple controllers, it operates on a global level rather than a per-object basis.
+With this, a controller instance reconcile either all objects or none – which is not inherently required.
+The implementation typically encapsulates the entire controller process.
+This means, that the actual controllers are only executed when the lease lock is acquired and the process is stopped immediately when leadership is lost.
+
+In essence, leader election in Kubernetes controllers is essential to preventing conflicts arising from concurrent reconciliations.
+However, it also restricts reconciliations of all objects to be performed by a single controller instance.
 
 ## Scalability of Controllers
 
