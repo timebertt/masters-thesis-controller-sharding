@@ -254,10 +254,29 @@ However, it also restricts reconciliations of all objects to be performed by a s
 
 ## Scalability of Controllers
 
+Scalability describes the ability of a system to handle increased load with adequate performance given that more resources are added to the system [@herbst2013elasticity; @bondi2000characteristics].
+Quantifying the load of a system reveals different dimensions depending on the system in question.
+A commonly accepted approach for measuring the scalability of a system is to evaluate at which scale the system can operate without faults or decreased performance. [@duboc2007framework]
+
+The basis for evaluating the scalability of a system is to define the central performance indicators directly related to user experience.
+In the context of reliability engineering, these are referred to as service level indicators (SLIs) and must be measurable in a running system [@beyer2016site].
+Next, target values (service level objectives) for the chosen performance indicators must be defined.
+As long as the measured performance meets the desired targets, the system can be considered to be performing adequately and without faults.
+Based on that, experimentation can be performed to test under which amount of load the system can operate while fulfilling the objectives. [@jogalekar2000evaluating; @sanders201578]
+
+- to measure scalability of a system, one must measure performance of the system at a given scale
+
+- no commonly accepted definition for scalability of controllers
+- but there is scalability definition for Kubernetes as a whole
+- definition for scalability of controllers can be derived from it
 - sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
+  - load/scale of Kubernetes cluster has many dimensions (hard to test in every dimension)
+  - tests are performed to measure whether a cluster fulfills certain SLOs when load dimensions are kept within targeted thresholds
   - guarantees certain SLOs if cluster is within thresholds
   - if SLOs are not met while keeping thresholds, means scalability goals are not met
   - if thresholds can be increased while keeping SLOs, means greater scalability of the system
+  - always measures/ensures scalability of a concrete setup
+    - e.g., based on the size of control plane machines, how far can the system be scaled without decreasing user experience
   - thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
     - mostly related to number of objects
     - some related to query/change rates
@@ -273,9 +292,14 @@ However, it also restricts reconciliations of all objects to be performed by a s
     - API-related latencies: watch, admission, webhook
   - sig-scalability tests
   - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
-- define how scalability of controllers can be measured
+
+- based on this definition, we define how scalability of controllers can be measured
   - environment requirements/prerequisites
     - reasonable API server latency
+  - measure performance of a concrete setup at a given scale
+    - important characteristics of the setup need to be captured: size of the controller
+    - resource limits, network bandwidth, actual usage thereof
+    - number of worker routines
   - thresholds
     - number of objects
     - object churn: creation/update rate (reconciliation rate ~ "throughput")
@@ -284,15 +308,15 @@ However, it also restricts reconciliations of all objects to be performed by a s
     - queue time: p99 < 1s
     - webhook call latency (if controller has webhooks)
   - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater scalability
-- factors that influence scalability
-  - resource limits
-  - network bandwidth
-  - how to consider actual usage (better measurement for size/cost of controllers)
-  - number of worker routines
 
 ## Scalability Limitations
 
-- core mechanisms of controllers cause the heavy resource usage
+- one can increase the limits of the setup (e.g., higher limits, more worker routines) to increase performance at scale
+- this is vertical scaling
+- cannot be scaled infinitely
+- scaling vertically in extremes, can hit other limitations, e.g., machine size, network bandwidth
+
+- which core mechanisms of controllers cause the heavy resource usage
   - watch events: CPU for decoding, network transfer
   - watch cache: memory
 - no horizontal scalability, no distribution of work, no active-active setups

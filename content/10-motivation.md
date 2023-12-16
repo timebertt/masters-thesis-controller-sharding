@@ -1,12 +1,6 @@
 # Motivation
 
 - clarify relevance, need in community
-  - issues in many projects asking for sharding
-    - istio: <https://github.com/istio/istio/issues/22208>
-    - velero: <https://github.com/vmware-tanzu/velero/issues/487>
-    - controller-runtime: <https://github.com/kubernetes-sigs/controller-runtime/issues/2576>
-    - Operator SDK: <https://github.com/operator-framework/operator-sdk/issues/1540>
-    - Metacontroller: <https://github.com/GoogleCloudPlatform/metacontroller/issues/190>
 - large-scale Kubernetes-based and controller-based deployments
 - core Kubernetes components scale well
   - sig-scalability cares about scalability of core components, but core components only [@k8scommunity]
@@ -17,5 +11,15 @@
   - <https://twitter.com/ibuildthecloud/status/1717369625904848945>
 - custom controllers/operators typically facilitate heavier reconciliation processes compared to core controllers [@kubevela]
 - some projects with large-scale deployments have already implemented sharding on their own
-- highly specific to individual projects, cannot be reused
-- there is no common design or implementation, that can be applied to any arbitrary controller
+  - highly specific to individual projects
+  - cannot be reused
+  - all implementations face similar challenges
+  - typically, not fully matured yet
+- sharding is asked for/considered in many projects
+  - istio: <https://github.com/istio/istio/issues/22208>
+  - velero: <https://github.com/vmware-tanzu/velero/issues/487>
+  - controller-runtime: <https://github.com/kubernetes-sigs/controller-runtime/issues/2576>
+  - Operator SDK: <https://github.com/operator-framework/operator-sdk/issues/1540>
+  - Metacontroller: <https://github.com/GoogleCloudPlatform/metacontroller/issues/190>
+- there is no common design or implementation, that can be applied to arbitrary controllers
+- reusable concept and implementation would benefit the controller ecosystem
