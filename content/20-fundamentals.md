@@ -255,33 +255,44 @@ However, it also restricts reconciliations of all objects to be performed by a s
 ## Scalability of Controllers
 
 Scalability describes the ability of a system to handle increased load with adequate performance given that more resources are added to the system [@herbst2013elasticity; @bondi2000characteristics].
-Quantifying the load of a system reveals different dimensions depending on the system in question.
-A commonly accepted approach for measuring the scalability of a system is to evaluate at which scale the system can operate without faults or decreased performance. [@duboc2007framework]
+Note that quantifying the scale or load of a system reveals different dimensions depending on the system in question.
+A commonly accepted approach for measuring the scalability of a system is to evaluate at which scale the system can operate without faults or decreased performance and then adding resources to observe resulting changes in the system's load capacity.
+[@duboc2007framework]
 
-The basis for evaluating the scalability of a system is to define the central performance indicators directly related to user experience.
-In the context of reliability engineering, these are referred to as service level indicators (SLIs) and must be measurable in a running system [@beyer2016site].
-Next, target values (service level objectives) for the chosen performance indicators must be defined.
-As long as the measured performance meets the desired targets, the system can be considered to be performing adequately and without faults.
-Based on that, experimentation can be performed to test under which amount of load the system can operate while fulfilling the objectives. [@jogalekar2000evaluating; @sanders201578]
+The basis for evaluating the scalability of a system is to define central performance indicators directly related to user experience.
+In the context of reliability engineering, these are referred to as service level indicators (SLIs), which must be measurable in a running system [@beyer2016site].
+Next, target values – or service level objectives (SLOs) – for the chosen performance indicators must be defined.
+As long as the measured performance indicators meet the desired targets, the system can be considered to be performing adequately and without faults.
+Based on this, experimentation can be performed to test under which amount of load the system can operate while satisfying the objectives.
+[@jogalekar2000evaluating; @sanders201578]
 
-- to measure scalability of a system, one must measure performance of the system at a given scale
+While there is no definition for the scalability of Kubernetes controllers as such, the community (SIG scalability) has established a definition for the scalability of Kubernetes as a whole[^k8s-scalability].
+In order to evaluate the scalability of controller setups in the scope of this thesis, a definition for the scalability of controllers is derived from the Kubernetes scalability definition.
 
-- no commonly accepted definition for scalability of controllers
-- but there is scalability definition for Kubernetes as a whole
-- definition for scalability of controllers can be derived from it
-- sig-scalability definition for Kubernetes scalability: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md#how-we-define-scalability>
-  - load/scale of Kubernetes cluster has many dimensions (hard to test in every dimension)
-  - tests are performed to measure whether a cluster fulfills certain SLOs when load dimensions are kept within targeted thresholds
-  - guarantees certain SLOs if cluster is within thresholds
-  - if SLOs are not met while keeping thresholds, means scalability goals are not met
-  - if thresholds can be increased while keeping SLOs, means greater scalability of the system
-  - always measures/ensures scalability of a concrete setup
-    - e.g., based on the size of control plane machines, how far can the system be scaled without decreasing user experience
+The load on or scale of a Kubernetes cluster has many dimensions, for example: number of nodes, number of pods, pod churn, API request rate.
+Evaluating the scalability of Kubernetes in every dimension is difficult and costly.
+Hence, the community has declared a set of thresholds[^k8s-thresholds] for these load dimensions together, which can be considered as the limits for scaling a single Kubernetes cluster.
+As long as a cluster is configured correctly and the load is kept within these limits, the cluster is guaranteed work reliably and perform adequately.
+In Kubernetes development, regular load tests [@perftests] are performed that put test clusters under load as high as the declared thresholds to detect performance or scalability regressions.
+[@k8scommunity]
+
+To evaluate whether a cluster is performing as desired under load, the key SLIs are defined and measured during load tests.
+For all SLIs, a corresponding SLO[^k8s-slos] is defined.
+If the SLOs are not satisfied while keeping load within the recommended limits, the declared scalability goals are not met.
+On the other hand, if the load thresholds can be increased while still satisfying SLOs, the scalability of the system has been improved.
+
+It is important to note that such tests always evaluate a single setup with a static configuration.
+Hence, the load capacity of the test setup is directly influenced by configuration like the control plane machine size.
+With this, the test results – whether or not SLOs are satisfied – might change even with slight changes to the setup's configuration.
+In other words, these tests don't increase the load to determine the maximum under which the cluster still performs as desired.
+Instead, the tests only verify that Kubernetes can perform as desired under a pre-defined amount of load with a given resource configuration to ensure the community can satisfy its scalability goals.
+[@k8scommunity]
+
+- sig-scalability definition for Kubernetes scalability:
   - thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
     - mostly related to number of objects
     - some related to query/change rates
     - also, churn <= 20/s: `#(Pod spec creations/updates/deletions) + #(user originated requests) per second`
-  - SLOs: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md>
   - official SLOs (non-WIP):
     - mutating API call latency: p99 <= 1s
     - read-only API call latency (non-streaming): p99 <= 1s (read single object), p99 <= 30s (read multiple objects)
@@ -290,8 +301,6 @@ Based on that, experimentation can be performed to test under which amount of lo
     - in-cluster network programming latency, DNS programming latency
     - in-cluster network latency, DNS lookup latency
     - API-related latencies: watch, admission, webhook
-  - sig-scalability tests
-  - see <https://github.com/kubernetes/community/blob/master/contributors/devel/README.md#sig-scalability>
 
 - based on this definition, we define how scalability of controllers can be measured
   - environment requirements/prerequisites
@@ -308,6 +317,10 @@ Based on that, experimentation can be performed to test under which amount of lo
     - queue time: p99 < 1s
     - webhook call latency (if controller has webhooks)
   - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater scalability
+
+[^k8s-scalability]: <https://github.com/kubernetes/community/blob/master/sig-scalability/README.md#kubernetes-scalability-definition-1>
+[^k8s-thresholds]: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
+[^k8s-slos]: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md>
 
 ## Scalability Limitations
 
