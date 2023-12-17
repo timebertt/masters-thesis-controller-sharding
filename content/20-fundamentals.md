@@ -272,6 +272,7 @@ In order to evaluate the scalability of controller setups in the scope of this t
 The load on or scale of a Kubernetes cluster has many dimensions, for example: number of nodes, number of pods, pod churn, API request rate.
 Evaluating the scalability of Kubernetes in every dimension is difficult and costly.
 Hence, the community has declared a set of thresholds[^k8s-thresholds] for these load dimensions together, which can be considered as the limits for scaling a single Kubernetes cluster.
+Most thresholds define a maximum supported number of API objects, others define a maximum supported `Pod` change rate (churn) or API request rate.
 As long as a cluster is configured correctly and the load is kept within these limits, the cluster is guaranteed work reliably and perform adequately.
 In Kubernetes development, regular load tests [@perftests] are performed that put test clusters under load as high as the declared thresholds to detect performance or scalability regressions.
 [@k8scommunity]
@@ -285,38 +286,38 @@ It is important to note that such tests always evaluate a single setup with a st
 Hence, the load capacity of the test setup is directly influenced by configuration like the control plane machine size.
 With this, the test results – whether or not SLOs are satisfied – might change even with slight changes to the setup's configuration.
 In other words, these tests don't increase the load to determine the maximum under which the cluster still performs as desired.
-Instead, the tests only verify that Kubernetes can perform as desired under a pre-defined amount of load with a given resource configuration to ensure the community can satisfy its scalability goals.
+Instead, the tests only verify that – given a reasonably large resource configuration – Kubernetes can perform as desired under a pre-defined amount of load.
+I.e., the goal of these scalability tests is not to measure the scalability of Kubernetes, but to ensure the community can satisfy its scalability goals.
 [@k8scommunity]
 
-- sig-scalability definition for Kubernetes scalability:
-  - thresholds: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
-    - mostly related to number of objects
-    - some related to query/change rates
-    - also, churn <= 20/s: `#(Pod spec creations/updates/deletions) + #(user originated requests) per second`
-  - official SLOs (non-WIP):
-    - mutating API call latency: p99 <= 1s
-    - read-only API call latency (non-streaming): p99 <= 1s (read single object), p99 <= 30s (read multiple objects)
-    - startup latency of schedulable, stateless pods (excluding image pull) and observed by watch: p99 <= 5s
-  - WIP SLOs:
-    - in-cluster network programming latency, DNS programming latency
-    - in-cluster network latency, DNS lookup latency
-    - API-related latencies: watch, admission, webhook
+At the time of writing, the Kubernetes community defines three official SLIs with corresponding SLOs that are satisfied when the load is kept below the recommended thresholds:
+[@k8scommunity]
+
+1. The latency of processing mutating API calls for single objects (`create`, `update`, `patch`, `delete`) for every (resource, verb) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second.
+2. The latency of processing non-streaming read-only API calls (`get`, `list`) for every (resource, scope) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second (for requests reading a single object) or at maximum 30 seconds (for requests reading all objects from a single namespace or all objects in the cluster).
+3. The latency of starting pods without persistent volumes that don't required cluster autoscaling or preemption, excluding image pulling and init containers, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum 5 seconds.
+
+More SLIs and SLOs are being worked on but have not been defined precisely yet and are thus not guaranteed yet.
+These SLIs include in-cluster network programming and execution latency, DNS programming and lookup latency, as well as API-related latencies for watch requests, admission plugins, and webhooks.
+[@k8scommunity]
 
 - based on this definition, we define how scalability of controllers can be measured
   - environment requirements/prerequisites
-    - reasonable API server latency
+    - reasonable API server latency (SLO 1 and 2 are satisfied)
+    - in experiment stricter: needs to include extended resources, needs to include webhook latency
+    - measure over experiment time instead of cluster-day
   - measure performance of a concrete setup at a given scale
     - important characteristics of the setup need to be captured: size of the controller
     - resource limits, network bandwidth, actual usage thereof
     - number of worker routines
-  - thresholds
-    - number of objects
+  - scale/load definition (thresholds)
+    - number of objects controller is responsible for
     - object churn: creation/update rate (reconciliation rate ~ "throughput")
   - controller SLIs / SLOs
-    - reconciliation latency, e.g., creation/change to ready
-    - queue time: p99 < 1s
-    - webhook call latency (if controller has webhooks)
-  - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater scalability
+    - reconciliation latency, e.g., time from creation/change to observed&ready state: p99 <= 5s
+    - object queue time: p99 <= 1s
+  - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater capacity
+  - scalability: when resources are added, thresholds can be increased proportionally
 
 [^k8s-scalability]: <https://github.com/kubernetes/community/blob/master/sig-scalability/README.md#kubernetes-scalability-definition-1>
 [^k8s-thresholds]: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
