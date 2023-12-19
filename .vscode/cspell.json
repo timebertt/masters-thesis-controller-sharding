@@ -26,6 +26,7 @@
         "DHBW",
         "knative",
         "kube",
+        "kubelet",
         "kubernetes",
         "pandoc",
         "schedulable",

@@ -204,7 +204,7 @@ Concurrent worker routines are another factor in achieving scalability.
 By starting multiple processors of reconciliation requests, multiple tasks for different objects can be executed concurrently.
 This approach enhances throughput, decreases queue wait times, and contributes to the overall scalability of the system.
 
-## Leader Election
+## Leader Election {#sec:leader-election}
 
 In Kubernetes controllers, the leader election mechanism addresses critical requirements for managing reconciliations across multiple instances.
 Without coordination, simultaneous reconciliations executed by different controller instances can lead to conflicting actions and compromise the integrity of the system.
@@ -305,7 +305,7 @@ More SLIs and SLOs are being worked on but have not been defined precisely yet a
 These SLIs include in-cluster network programming and execution latency, in-cluster DNS programming and lookup latency, as well as API-related latencies of watch requests, admission plugins, and webhooks.
 [@k8scommunity]
 
-## Scalability of Controllers {#sec:controller-scalability}
+## Controller Scalability {#sec:controller-scalability}
 
 Based on the above definition for Kubernetes scalability, a definition for the scalability of Kubernetes controllers is derived.
 In this context, the term "controller setup" refers to a set of coherent controllers (also known as a controller manager).
@@ -346,23 +346,36 @@ Other key parameters are the controller's compute resources and number of worker
 
 ## Scalability Limitations
 
-- one can increase the limits of the setup (e.g., higher limits, more worker routines) to increase performance at scale
-- this is vertical scaling
-- cannot be scaled infinitely
-- scaling vertically in extremes, can hit other limitations, e.g., machine size, network bandwidth
+While Kubernetes and its controllers are already scalable to a good extend, there are limitations to scaling controllers inherent in leader election.
+To discuss these limitations, it is important to understand how the load dimensions, SLIs, and resource usage are related.
 
-- which core mechanisms of controllers cause the heavy resource usage
-  - watch events: CPU for decoding, network transfer
-  - watch cache: memory
-- no horizontal scalability, no distribution of work, no active-active setups
-- due to global leader election, concurrent reconciliations are prevented on a global level
+When increasing the load by adding more objects, the controller's watch cache needs more memory for caching the additional objects.
+This doesn't have a direct impact on the SLIs.
+However, the controller might fail due to out-of-memory kills when consuming more memory than available.
+When the load on a controller is amplified by increasing the object churn rate, more watch events for relevant objects need to be transferred over the network.
+The processing of more watch events also results in a higher CPU usage for decoding and for performing reconciliations.
+If the number of worker routines is not high enough to facilitate the needed rate of reconciliations, the queue time (SLI 1) increases.
+Also, if performing reconciliations is computationally intensive, the extra CPU usage might exhaust the available CPU cycles, which will in turn increase the reconciliation latency (SLI 2).
+
+To expand the load capacity of the controller setup or to fulfill the SLOs under increased load, more resources can be added to the setup.
+One option is to allocate more memory for the controller, wich can increase the maximum number of objects that a controller's watch cache can store.
+Another option is to add more worker routines or allocate more CPU cycles for the controller, which can reduce queue times and reconciliation latency.
+This allows the controller to handle a higher churn rate.
+Lastly, the network bandwidth can be expanded to ensure prompt delivery of watch events and API requests, which can also reduce reconciliation latency.
+
+- vertical scaling increases setup's load capacity, but cannot be scaled infinitely
+- scaling vertically in extremes, can hit other limitations, e.g., machine size, network bandwidth
+- no horizontal scalability, cannot increase the setup's load capacity by adding more instances
+- due to global leader election ([@sec:leader-election]), concurrent reconciliations are prevented on a global level and with this also distribution of work (no active-active setups)
 - rate of reconciliations, amount of objects, etc. limited to machine size and network bandwidth
 - other perspective: fulfilling SLOs requires scaling controllers vertically when rate of reconciliations, amount of objects, etc. increase
-- cannot increase throughput/capacity by adding more instances
-- more ideas
-  - makes precise vertical right-sizing more difficult, as resource consumption depends on leadership
-  - big singleton controller loads only one API server, sharded setup better distributes load across API server instances -> not true for all cases: depends on control plane setup, HTTP2 usage
-  - see background in <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
+[@studyproject; @kubevela]
+
+side effects:
+
+- leader election makes precise vertical right-sizing more difficult, as resource consumption depends on leadership
+- big singleton controller loads only one API server, sharded setup better distributes load across API server instances -> not true for all cases: depends on control plane setup and HTTP2 usage
+- see background in <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
 
 ## Sharding
 
