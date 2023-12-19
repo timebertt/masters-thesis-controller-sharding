@@ -1,9 +1,11 @@
 # Evaluation
 
 - define scalability requirements / SLOs
-  - ref SLIs defined in fundamentals
+  - ref SLIs defined in fundamentals, [@sec:controller-scalability]
+    - Kubernetes SLO 1 and 2 must be satisfied
+    - in experiment stricter: needs to include extended resources, needs to include webhook latency
+    - measure over experiment time instead of cluster-day
   - p99 queue time < 1s
-    - check k8s scalability goals
   - sharding assignment latency
   - website readiness (fix kube-state-metrics issue) -> caution: depends on kube-controller-manager!
 - precisely describe experiment setup: scale/compute resources of control plane

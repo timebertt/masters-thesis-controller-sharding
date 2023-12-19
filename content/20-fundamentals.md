@@ -252,7 +252,11 @@ This means, that the actual controllers are only executed when the lease lock is
 In essence, leader election in Kubernetes controllers is essential to preventing conflicts arising from concurrent reconciliations.
 However, it also restricts reconciliations of all objects to be performed by a single controller instance.
 
-## Scalability of Controllers
+## Kubernetes Scalability {#sec:kubernetes-scalability}
+
+[^k8s-scalability]: <https://github.com/kubernetes/community/blob/master/sig-scalability/README.md#kubernetes-scalability-definition-1>
+[^k8s-thresholds]: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
+[^k8s-slos]: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md>
 
 Scalability describes the ability of a system to handle increased load with adequate performance given that more resources are added to the system [@herbst2013elasticity; @bondi2000characteristics].
 Note that quantifying the scale or load of a system reveals different dimensions depending on the system in question.
@@ -272,7 +276,7 @@ In order to evaluate the scalability of controller setups in the scope of this t
 The load on or scale of a Kubernetes cluster has many dimensions, for example: number of nodes, number of pods, pod churn, API request rate.
 Evaluating the scalability of Kubernetes in every dimension is difficult and costly.
 Hence, the community has declared a set of thresholds[^k8s-thresholds] for these load dimensions together, which can be considered as the limits for scaling a single Kubernetes cluster.
-Most thresholds define a maximum supported number of API objects, others define a maximum supported `Pod` change rate (churn) or API request rate.
+Most thresholds define a maximum supported number of API objects, others define a maximum supported `Pod` churn rate or API request rate.
 As long as a cluster is configured correctly and the load is kept within these limits, the cluster is guaranteed work reliably and perform adequately.
 In Kubernetes development, regular load tests [@perftests] are performed that put test clusters under load as high as the declared thresholds to detect performance or scalability regressions.
 [@k8scommunity]
@@ -283,11 +287,11 @@ If the SLOs are not satisfied while keeping load within the recommended limits, 
 On the other hand, if the load thresholds can be increased while still satisfying SLOs, the scalability of the system has been improved.
 
 It is important to note that such tests always evaluate a single setup with a static configuration.
-Hence, the load capacity of the test setup is directly influenced by configuration like the control plane machine size.
+Also, the load capacity of the test setup is directly influenced by configuration like the control plane machine size.
 With this, the test results – whether or not SLOs are satisfied – might change even with slight changes to the setup's configuration.
 In other words, these tests don't increase the load to determine the maximum under which the cluster still performs as desired.
 Instead, the tests only verify that – given a reasonably large resource configuration – Kubernetes can perform as desired under a pre-defined amount of load.
-I.e., the goal of these scalability tests is not to measure the scalability of Kubernetes, but to ensure the community can satisfy its scalability goals.
+I.e., the aim of these tests is not to measure the scalability of Kubernetes, but to ensure that the community can satisfy its scalability goals.
 [@k8scommunity]
 
 At the time of writing, the Kubernetes community defines three official SLIs with corresponding SLOs that are satisfied when the load is kept below the recommended thresholds:
@@ -298,30 +302,47 @@ At the time of writing, the Kubernetes community defines three official SLIs wit
 3. The latency of starting pods without persistent volumes that don't required cluster autoscaling or preemption, excluding image pulling and init containers, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum 5 seconds.
 
 More SLIs and SLOs are being worked on but have not been defined precisely yet and are thus not guaranteed yet.
-These SLIs include in-cluster network programming and execution latency, DNS programming and lookup latency, as well as API-related latencies for watch requests, admission plugins, and webhooks.
+These SLIs include in-cluster network programming and execution latency, in-cluster DNS programming and lookup latency, as well as API-related latencies of watch requests, admission plugins, and webhooks.
 [@k8scommunity]
 
-- based on this definition, we define how scalability of controllers can be measured
-  - environment requirements/prerequisites
-    - reasonable API server latency (SLO 1 and 2 are satisfied)
-    - in experiment stricter: needs to include extended resources, needs to include webhook latency
-    - measure over experiment time instead of cluster-day
-  - measure performance of a concrete setup at a given scale
-    - important characteristics of the setup need to be captured: size of the controller
-    - resource limits, network bandwidth, actual usage thereof
-    - number of worker routines
-  - scale/load definition (thresholds)
-    - number of objects controller is responsible for
-    - object churn: creation/update rate (reconciliation rate ~ "throughput")
-  - controller SLIs / SLOs
-    - reconciliation latency, e.g., time from creation/change to observed&ready state: p99 <= 5s
-    - object queue time: p99 <= 1s
-  - same as for Kubernetes itself: if thresholds can be increased while keeping SLOs, greater capacity
-  - scalability: when resources are added, thresholds can be increased proportionally
+## Scalability of Controllers {#sec:controller-scalability}
 
-[^k8s-scalability]: <https://github.com/kubernetes/community/blob/master/sig-scalability/README.md#kubernetes-scalability-definition-1>
-[^k8s-thresholds]: <https://github.com/kubernetes/community/blob/master/sig-scalability/configs-and-limits/thresholds.md>
-[^k8s-slos]: <https://github.com/kubernetes/community/blob/master/sig-scalability/slos/slos.md>
+Based on the above definition for Kubernetes scalability, a definition for the scalability of Kubernetes controllers is derived.
+In this context, the term "controller setup" refers to a set of coherent controllers (also known as a controller manager).
+First, it is required to devise how to quantify the scale of or load on a specific controller setup.
+As controllers are an essential part of Kubernetes, the scale is quantified in a subset of dimensions of Kubernetes scalability.
+For a given controller setup, the load has two dimensions:
+
+1. The number of API objects that are watched and reconciled by the controller.
+2. The churn rate of API objects, i.e., rate of object creations, updates, and deletions.
+
+Next, the key SLIs and corresponding SLOs of a controller setup need to be specified.
+As a prerequisite for these performance indicators to be meaningful, the official Kubernetes SLOs need to be satisfied by the cluster that the controllers are running on.
+Most importantly, the control plane needs to facilitate reasonable latency of processing API requests.
+To consider a controller setup as performing adequately, the following SLOs need to be satisfied:
+
+1. The time of enqueuing object keys for reconciliation for every controller, measured as the 99th percentile per cluster-day, is at maximum 1 second.
+2. The latency of realizing the desired state of objects for every controller, excluding reconciliation time of controlled objects, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum $x$, where $x$ depends on the controller.
+
+The queue duration (SLI 1) is comparable to the API request latency SLIs of Kubernetes.
+It captures the responsiveness of the system, where a low queue duration results in a better user experience.
+If the time object keys are enqueued for reconciliation is too high, changes to the objects' desired state are not processed promptly and changes to objects' observed state are not recorded in a timely manner.
+The reconciliation latency (SLI 2) is comparable to the pod startup latency SLI of Kubernetes.
+It measures how fast the system can bring the desired state of objects to reality.
+However, it strongly depends on the type of controller.
+For example, a simple controller owning a small set of objects should only take 5 seconds at maximum to configure them as desired, while a controller orchestrating a large set of objects or external infrastructure might take up to 1 minute to reach the desired state.
+
+Based on these definitions, experimentation can be performed to determine the maximum amount of load under which the controller setup can still satisfy the SLOs.
+If the load can be increased without violating the SLOs, the controller setup has a greater load capacity.
+In order for the setup to be scalable, the load capacity must grow when more resources are added to the system.
+
+Similar to Kubernetes as a whole, evaluating the scalability of controller setups in every dimension can become costly depending on the number of different API resources the controllers reconcile and watch.
+Accordingly, a set of thresholds for each load dimension may be specified under which the controller setup is expected to satisfy the SLOs.
+
+As in Kubernetes scalability tests, controller scalability tests always evaluate a concrete setup.
+Therefore it is important to record the key configuration parameters of the evaluated setup.
+These include the control plane's compute resources and other configuration relevant for the evaluated controller, e.g., number of worker routines of dependant controllers' and rate limits of kube-controller-manager.
+Other key parameters are the controller's compute resources and number of worker routines.
 
 ## Scalability Limitations
 
