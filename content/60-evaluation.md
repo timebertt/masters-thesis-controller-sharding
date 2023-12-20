@@ -16,8 +16,10 @@
 - randomly kill instances/leader
   - similar to [knative chaosduck](https://github.com/knative/pkg/blob/main/leaderelection/chaosduck/main.go#L17)
 - rolling updates of controller
+  - evaluate coordination on object movements
 - horizontal (auto-)scaling of controller during load
-- show that more replicas bring more performance, allow increasing the thresholds while keeping SLOs
+  - evaluate coordination on object movements
+- show that more replicas bring more performance, allow increasing the thresholds while keeping SLOs (req. 5)
   - this is what proves that controllers are horizontally scalable now!
   - load in individual instances is proportionally decreased
-- show that overhead of sharding is constant, independent of number of objects
+- show that overhead of sharding is constant, independent of number of objects (req. 7)

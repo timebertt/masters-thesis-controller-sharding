@@ -344,7 +344,7 @@ Therefore it is important to record the key configuration parameters of the eval
 These include the control plane's compute resources and other configuration relevant for the evaluated controller, e.g., number of worker routines of dependant controllers' and rate limits of kube-controller-manager.
 Other key parameters are the controller's compute resources and number of worker routines.
 
-## Scalability Limitations
+## Scalability Limitations {#sec:scalability-limitations}
 
 While Kubernetes and its controllers are already scalable to a good extend, there are limitations to scaling controllers inherent in leader election.
 To discuss these limitations, it is important to understand how a controller's load dimensions, SLIs, and resource usage are related.

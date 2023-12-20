@@ -1,8 +1,24 @@
 # Design
 
+- design based on study project
+- evolve design to address extended requirements
+
 ## Overview
 
-How to address new requirements:
+Secondary requirements (design/implementation-oriented) specific sub-requirements to fulfill req. 7:
+\todo[inline]{find a good spot for this}
+
+- reduce memory overhead by sharder
+  - eliminate cache for sharded objects (grows with the number of sharded objects)
+  - object cache was only needed to detect evt. 1
+  - find different mechanism to trigger assignments
+- reduce API request volume caused by assignments and coordination
+  - during creation: two requests are used for creation and initial assignment
+  - during drain: three requests are used for starting drain, acknowledging drain, and reassignment
+- non-goal: reduce API request volume of membership and failure detection
+  - keep lease-based membership
+
+How to address extended requirements:
 
 - generalization: independent from controller framework and programming language
   - move partitioning, assignment, coordination logic to external sharder
@@ -13,15 +29,12 @@ How to address new requirements:
 - reduce API request volume caused by assignments and coordination
   - how to persist assignments efficiently? -> make assignments transparent without persistence?
   - is also reduced with slot-based assignments
-- keep lease-based membership
-  - has to be implemented in all controller frameworks
-  - necessary, no way around it
 
 ## Step 1: External Sharder
 
 Goals:
 
-- generalization
+- generalization (address req. 6)
 - will not reduce CPU/mem overhead, only move it to an external component
 - will not reduce API request volume
 
@@ -43,6 +56,7 @@ Problems:
 
 Goals:
 
+- address req. 7
 - reduce CPU/mem overhead
 - reduce API request volume
 

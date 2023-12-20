@@ -1,5 +1,27 @@
 # Related Work
 
+- describe previous work for scaling controllers horizontally
+- thesis will enhance design and implementation of study project
+  - many requirements are already fulfilled
+- present existing mechanisms in other community projects
+- analyze which mechanisms are
+
+## Study Project
+
+- describe shortcomings
+- needs increased load tests
+
+Summary:
+
+- implementation on controller-side
+- implementation in controller-runtime, can be reused in other controllers based on controller-runtime
+- watches are restricted to shard
+  - CPU and memory usage are distributed
+- sharder controller required
+  - extra memory usage
+- assignments on a per-object basis needs to many reconciliations and API requests
+  - especially on rolling updates
+
 ## General Mechanisms
 
 - general ideas supported by many controllers/operators
@@ -105,19 +127,3 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
   - when master is down, objects stay unassigned
   - when assigned shard is down, objects are not moved
 - static shard names?
-
-## Study Project
-
-- describe shortcomings
-- needs increased load tests
-
-Summary:
-
-- implementation on controller-side
-- implementation in controller-runtime, can be reused in other controllers based on controller-runtime
-- watches are restricted to shard
-  - CPU and memory usage are distributed
-- sharder controller required
-  - extra memory usage
-- assignments on a per-object basis needs to many reconciliations and API requests
-  - especially on rolling updates
