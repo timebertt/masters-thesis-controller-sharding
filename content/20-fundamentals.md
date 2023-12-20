@@ -347,35 +347,43 @@ Other key parameters are the controller's compute resources and number of worker
 ## Scalability Limitations
 
 While Kubernetes and its controllers are already scalable to a good extend, there are limitations to scaling controllers inherent in leader election.
-To discuss these limitations, it is important to understand how the load dimensions, SLIs, and resource usage are related.
+To discuss these limitations, it is important to understand how a controller's load dimensions, SLIs, and resource usage are related.
 
-When increasing the load by adding more objects, the controller's watch cache needs more memory for caching the additional objects.
+When increasing the load by adding more objects, the controller's watch cache requires more memory for caching the additional objects.
 This doesn't have a direct impact on the SLIs.
-However, the controller might fail due to out-of-memory kills when consuming more memory than available.
+However, the controller might fail due to out-of-memory faults when trying to consume more memory than available.
 When the load on a controller is amplified by increasing the object churn rate, more watch events for relevant objects need to be transferred over the network.
-The processing of more watch events also results in a higher CPU usage for decoding and for performing reconciliations.
+The processing of the additional watch events also results in a higher CPU usage for decoding and for performing reconciliations.
 If the number of worker routines is not high enough to facilitate the needed rate of reconciliations, the queue time (SLI 1) increases.
 Also, if performing reconciliations is computationally intensive, the extra CPU usage might exhaust the available CPU cycles, which will in turn increase the reconciliation latency (SLI 2).
 
 To expand the load capacity of the controller setup or to fulfill the SLOs under increased load, more resources can be added to the setup.
-One option is to allocate more memory for the controller, wich can increase the maximum number of objects that a controller's watch cache can store.
+One option is to allocate more memory for the controller, which can increase the maximum number of objects that a controller's watch cache can store.
 Another option is to add more worker routines or allocate more CPU cycles for the controller, which can reduce queue times and reconciliation latency.
-This allows the controller to handle a higher churn rate.
 Lastly, the network bandwidth can be expanded to ensure prompt delivery of watch events and API requests, which can also reduce reconciliation latency.
+Both increasing CPU allocation and network bandwidth can allow the controller to handle higher churn rates.
+[@studyproject; @fluxdocs]
 
-- vertical scaling increases setup's load capacity, but cannot be scaled infinitely
-- scaling vertically in extremes, can hit other limitations, e.g., machine size, network bandwidth
-- no horizontal scalability, cannot increase the setup's load capacity by adding more instances
-- due to global leader election ([@sec:leader-election]), concurrent reconciliations are prevented on a global level and with this also distribution of work (no active-active setups)
-- rate of reconciliations, amount of objects, etc. limited to machine size and network bandwidth
-- other perspective: fulfilling SLOs requires scaling controllers vertically when rate of reconciliations, amount of objects, etc. increase
+As described, Kubernetes controllers are scalable as such, as their load capacity can be expanded by adding more resources to the system.
+However, they can only be scaled vertically, i.e., by adding more resources to the existing controller instance.
+Due to the controller's leader election ([@sec:leader-election]), concurrent reconciliations are prevented on a global level.
+With this, the controller's work cannot be distributed across multiple instances.
+Hence, this doesn't allow active-active setups, i.e., the load capacity cannot be increased by adding more resources in the form of additional instances.
+In other words, Kubernetes controllers are not horizontally scalable.
+When the load on a controller setup increases, vertical scaling is required to keep fulfilling the SLOs.
+[@jogalekar2000evaluating; @studyproject; @kubevela]
+
+While scaling controllers vertically increases the setup's load capacity, one cannot perform vertical scaling infinitely.
+Running controllers at extreme vertical scale can cause the setup to violate the SLOs due to other limitations, e.g., the maximum available machine size or network bandwidth.
+With this, the maximum scale of a controller setup in terms of number of objects and object churn rate is limited by the fact that controllers cannot be scaled horizontally.
 [@studyproject; @kubevela]
 
-side effects:
-
-- leader election makes precise vertical right-sizing more difficult, as resource consumption depends on leadership
-- big singleton controller loads only one API server, sharded setup better distributes load across API server instances -> not true for all cases: depends on control plane setup and HTTP2 usage
-- see background in <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
+Relying on a single active controller instance and vertical scaling only, also poses other challenges and drawbacks.
+For example, it is desirable to run multiple instances of a controller even if only one of them is active for facilitating fast-overs and achieving higher availability.
+However, this wastes compute resources allocated for instances in stand-by and right-sizing allocations becomes difficult as the actual resource consumption depends on the leadership status.
+Also, a failure or performance degradation in a single controller instance always blocks or affects reconciliation of all objects [@kubevela].
+Additionally, scaling up controllers vertically might not work without downtime in all cases, e.g., when migration to a bigger machine size is required.
+Lastly, depending on the control plane networking setup, running a single controller instance with HTTP2 enabled might result in loading a single API server instance only as all API requests are multiplexed over a single TLS connection.
 
 ## Sharding
 
