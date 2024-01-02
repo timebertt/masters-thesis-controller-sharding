@@ -29,6 +29,7 @@
         "kubelet",
         "kubernetes",
         "pandoc",
+        "rebalancing",
         "schedulable",
         "sharded",
         "sharder",

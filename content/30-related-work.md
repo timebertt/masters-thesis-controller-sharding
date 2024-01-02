@@ -37,27 +37,47 @@ If there are less shared watches compared to a single instance responsible for a
 All of these drawbacks limit the horizontal scalability of such sharded setups.
 Hence, these approaches cannot be used for solving generally making Kubernetes controllers horizontally scalable.
 
-- workload level
-  - ingress controller sharding by route: <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
-  - machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
-  - Prometheus, kube-state-metrics?
+## Study Project {#sec:related-study-project}
 
-## Study Project
+![Study project sharding architecture [@studyproject]](../assets/study-project-design.pdf)
 
-- describe shortcomings
-- needs increased load tests
+A previous study project [@studyproject] presents a design and implementation for sharding Kubernetes controllers by leveraging established sharding approaches from distributed databases.
+The design introduces a sharder that runs in one of the controller instances as determined by a lease-based leader election mechanism.
+It is responsible for sharding-related tasks like failure detection, partitioning, assignments, and coordination.
 
-Summary:
+To realize membership and failure detection, a lease-based mechanism inspired by Bigtable [@bigtable] is employed.
+Each controller instance maintains a shard lease with its individual instance ID, serving as a heartbeat resource for announcing membership to the sharder.
+The sharder watches these leases for reacting to state changes, and performs shard termination and object reassignment upon lease expiration or voluntary termination.
 
-- implementation on controller-side
-- implementation in controller-runtime, can be reused in other controllers based on controller-runtime
-  - cannot be reused for controllers not based on controller-runtime, or written in other programming languages
-- watches are restricted to shard
-  - CPU and memory usage are distributed
-- sharder controller required
-  - extra memory usage
-- assignments on a per-object basis needs to many reconciliations and API requests
-  - especially on rolling updates
+For partitioning, a variant of consistent hashing inspired by Apache Cassandra [@cassandradocs] and Amazon Dynamo [@dynamo] is used to determine shard ownership based on the API object's metadata.
+This minimizes object movement during instance additions or removals and provides a simple, deterministic algorithm for shard assignment.
+
+In addition to watching shard leases, the sharder also watches the metadata of sharded API objects to react to object creations and assignment changes.
+Objects are assigned to specific controller instances by the sharder, and this assignment is persisted in a `shard` label on the objects themselves.
+The sharder's role is critical during initial assignments but is not in the critical path for ongoing reconciliations.
+All shards use filtered watches with label selectors specific to their instance ID to only watch and reconcile API objects that are assigned to the shard.
+
+Concurrent reconciliations of a single object in multiple controller instances during object movements are prevented by following a dedicated handover protocol.
+If the current shard is still available, it needs to acknowledge the movement and confirm that it stops reconciling the object.
+For this, the sharder first adds a `drain` label to the object and waits until the current shard has removed both the `drain` and `shard` label.
+Only then, the sharder sets the `shard` label to the instance ID of the new, desired shard.
+If the current shard is not available, objects are immediately assigned to the new shard without setting the `drain` label first.
+
+This design is a good step towards horizontally scalable Kubernetes controllers.
+It achieves a good distribution of reconciliation work across available controller instances.
+Also, the design enables dynamic scaling of the controller replicas during runtime by facilitating automatic rebalancing.
+By using shard-specific label selectors for watch requests, the CPU and memory usage related to process watch events and caching objects is distributed well.
+
+The design was implemented generically in the controller-runtime library.
+With this, it can be reused in other controllers that are written in Go and based on controller-runtime.
+While controllers that are not written in Go or don't use controller-runtime can leverage the same sharding mechanisms, the presented implementation cannot be reused in such controllers.
+Another drawback of the design is the extra CPU and memory usage of the sharder's watches and caches for sharded API objects.
+It requires watching all sharded API objects in one of the controller instance and thus causes CPU and memory usage that is proportional to the number of sharded objects.
+With this, the scalability limitation of controllers is not resolved but only shifted to the active sharder instance (see [@fig:study-project-memory]).
+Additionally, the assignments per object require many sharder reconciliations and API requests, especially during rolling updates.
+This increases the load on the control plane.
+
+![Study project memory usage by pod [@studyproject]](../assets/study-project-memory.pdf){#fig:study-project-memory}
 
 ## knative
 
@@ -130,7 +150,12 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
   - when assigned shard is down, objects are not moved
 - static shard names?
 
-## (Prometheus)
+## Sharding on Workload Level?
+
+- ingress controller sharding by route: <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
+- machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
+
+### Prometheus
 
 - not controller-based sharding, but uses API machinery for service discovery
 - `modulus` in service discovery config: <https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config>
@@ -140,7 +165,7 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
   - scaling down shards does not reshard data onto remaining instances, it must be manually moved
   - scaling up shards does not reshard data, but it will continue to be available from the same instances
 
-## (kube-state-metrics)
+### kube-state-metrics
 
 See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
 
