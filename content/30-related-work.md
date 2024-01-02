@@ -1,10 +1,8 @@
 # Related Work
 
-- describe previous work for scaling controllers horizontally
-- thesis will enhance design and implementation of study project
-  - many requirements are already fulfilled
+- describe related work for scaling controllers horizontally
 - present existing mechanisms in other community projects
-- analyze which mechanisms are
+- analyze advantages and drawbacks of mechanisms
 
 ## Study Project
 
@@ -15,6 +13,7 @@ Summary:
 
 - implementation on controller-side
 - implementation in controller-runtime, can be reused in other controllers based on controller-runtime
+  - cannot be reused for controllers not based on controller-runtime, or written in other programming languages
 - watches are restricted to shard
   - CPU and memory usage are distributed
 - sharder controller required

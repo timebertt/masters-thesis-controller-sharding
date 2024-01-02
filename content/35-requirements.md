@@ -8,8 +8,10 @@
   - distribute work across multiple instances
 - use sharding mechanisms to resolve limitations and fulfill requirements of horizontally scalable controllers
 - refer to scalability definition ([@sec:kubernetes-scalability]): once work can distributed, adding a new instance yields higher load capacity
-
-## Requirements
+- thesis augments requirements of study project and enhances existing design and implementation accordingly
+  - basic requirements are already fulfilled in study project
+  - study project still has scalability limitations
+  - based on these, new requirements are added to resolve them
 
 Refer to requirements from study project:
 [@studyproject]
@@ -38,26 +40,3 @@ Extended requirements:
   - e.g., introduce external dependencies/infrastructure like event queue or message broker
   - brings additional operational complexity, decreases comprehensibility, makes it harder to reason about
   - conflicts with req. 6: external dependencies make it harder to reuse in arbitrary controllers
-
-## Required Actions/Events
-
-\todo[inline]{find a good name for this}
-
-Precisely define the actions that the sharding mechanism needs to perform on which events:
-
-- evt. 1: new object is created or object is drained (drain and shard label are not present)
-  - object is unassigned, assign directly
-  - if no shard is available, no assignment is performed (handled later on by action 2)
-
-- evt. 2: new shard becomes available
-  - determine objects that should be assigned to new shard
-  - if object is not assigned yet, assign directly
-  - if object is assigned to unavailable shard, assign directly
-  - if object is assigned to available shard, drain object
-
-- evt. 3: existing shard becomes unavailable
-  - determine objects that are assigned to shard
-  - assign all objects to another shard directly
-  - if no shard is available, unassign objects OR no assignment is performed? (handled by action 2)
-
-\todo[inline]{make event descriptions generic, eliminate implementation-specifics}
