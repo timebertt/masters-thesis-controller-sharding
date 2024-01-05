@@ -68,11 +68,11 @@ It achieves a good distribution of reconciliation work across available controll
 Also, the design enables dynamic scaling of the controller replicas during runtime by facilitating automatic rebalancing.
 By using shard-specific label selectors for watch requests, the CPU and memory usage related to process watch events and caching objects is distributed well.
 
-The design was implemented generically in the controller-runtime library.
+The design is implemented generically in the controller-runtime [@controllerruntime] library.
 With this, it can be reused in other controllers that are written in Go and based on controller-runtime.
-While controllers that are not written in Go or don't use controller-runtime can leverage the same sharding mechanisms, the presented implementation cannot be reused in such controllers.
+Controllers that are not written in Go or that don't use controller-runtime can leverage the same sharding mechanisms, but the presented implementation cannot be reused in such controllers.
 Another drawback of the design is the extra CPU and memory usage of the sharder's watches and caches for sharded API objects.
-It requires watching all sharded API objects in one of the controller instance and thus causes CPU and memory usage that is proportional to the number of sharded objects.
+The design requires watching all sharded API objects in one of the controller instance and thus causes CPU and memory usage that is proportional to the number of sharded objects.
 With this, the scalability limitation of controllers is not resolved but only shifted to the active sharder instance (see [@fig:study-project-memory]).
 Additionally, the assignments per object require many sharder reconciliations and API requests, especially during rolling updates.
 This increases the load on the control plane.
@@ -81,6 +81,7 @@ This increases the load on the control plane.
 
 ## knative
 
+<!--
 See references in <https://github.com/timebertt/thesis-controller-sharding/issues/1>, tracking issue <https://github.com/knative/pkg/issues/1181>, documentation <https://knative.dev/docs/serving/config-ha/>.
 
 - controller HA (per-reconciler leader election) [@mooresharding]
@@ -103,17 +104,21 @@ Summary:
 
 - purpose is high availability
 - not horizontal scaling
+-->
 
 ## Flux
 
+<!--
 See <https://fluxcd.io/flux/installation/configuration/sharding/>.
 
 - label-based sharding
 - users need to set up multiple instances with distinct label selectors manually
 - users need to label objects manually, no automatic assignment to shards
+-->
 
 ## ArgoCD
 
+<!--
 See:
 
 - benchmarks:
@@ -136,9 +141,11 @@ Summary:
   - legacy: `hash(cluster secret UID) % replicas`
   - now: round-robin
 - supports dynamic scaling based on clusters per shard
+-->
 
 ## KubeVela
 
+<!--
 See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
 
 - also uses labels to assign objects to shards
@@ -149,9 +156,11 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
   - when master is down, objects stay unassigned
   - when assigned shard is down, objects are not moved
 - static shard names?
+-->
 
 ## Sharding on Workload Level?
 
+<!--
 - ingress controller sharding by route: <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
 - machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
 
@@ -183,3 +192,4 @@ See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
   - watch with field selector for `spec.nodeName`
   - distributes watch and cache across instances
   - rollout includes a downtime for each shard
+-->
