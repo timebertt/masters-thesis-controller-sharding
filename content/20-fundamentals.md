@@ -1,6 +1,6 @@
 # Fundamentals
 
-## API Machinery
+## API Machinery {#sec:apimachinery}
 
 Kubernetes is an open-source system for orchestrating container-based applications [@soltesz2007container] and cloud native infrastructure [@cncftoc] on clusters of machines.
 It is an API-centric and declarative system, in which clients specify the desired state of applications and infrastructure instead of managing them via imperative commands.
@@ -118,7 +118,7 @@ This mechanism is used to resolve conflicts where multiple objects select an ove
 For this, controllers adopt owned objects by setting the respective controller reference first before acting on them.
 Typically, API objects have only one owner reference which also the controller reference. [@k8s]
 
-## Controller Machinery
+## Controller Machinery {#sec:controller-machinery}
 
 As described in the previous section, Kubernetes facilitates declarative configuration management.
 When clients declare the desired state of an API object, the API server accepts the change and stores it in etcd, but it does not perform the necessary changes to fulfill the desired state.
