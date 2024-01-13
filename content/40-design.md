@@ -40,28 +40,30 @@ This is also the case when an existing object is should be moved to another shar
 In these cases, the sharder should directly assign the object to one of the available shards.
 If there is no available shard, the assignment is deferred until a new shard becomes available (evt. \ref{evt:new-shard}).
 
-## Overview
+## Architecture
 
 ![Sharding architecture](../draw/architecture.pdf)
 
-How to address extended requirements:
+The presented design keeps the sharding mechanisms inspired by distributed databases for membership, failure detection, and partitioning as seen in the study project.
+I.e., individual controller instances announce themselves to the sharder by maintaining a shard lease that also serves the purpose of detecting shard failures.
+Also, consistent hashing is kept for deterministically identifying the responsible instance for API objects based on the discovered membership information, while facilitating minimal movements during instance additions and removals.
 
-- generalization (req. \ref{req:reusable}): independent from controller framework and programming language
-  - addressed in step 1 ([@sec:design-external])
-  - move partitioning, assignment, coordination logic to external sharder
-  - design how to configure which objects should be sharded
-- constant overhead (req. \ref{req:constant}): required design/implementation enhancements:
-  - addressed in step 2 ([@sec:design-admission])
-  - reduce memory overhead by sharder
-    - eliminate cache for sharded objects (grows with the number of sharded objects)
-    - consider required actions again
-    - object cache was only needed to detect evt. 1
-    - find different mechanism to trigger assignments
-  - reduce API request volume caused by assignments and coordination
-    - during creation: two requests are used for creation and initial assignment
-    - during drain: three requests are used for starting drain, acknowledging drain, and reassignment
-  - non-goal: reduce API request volume of membership and failure detection
-    - keep lease-based membership
+Furthermore, label-based assignments and coordination as well as shard-specific label selectors are kept for a good distribution of CPU and memory load related to the controller's watch caches.
+Lastly, concurrent reconciliations are prevented by following the same protocol for handovers between active instance involving the `drain` label.
+
+In contrast to the previous design, the sharder is not part of the controller deployment itself but runs externally as a dedicated deployment.
+It is configured by `ClusterRing` objects that identify rings of controller instances responsible for a set of sharded API objects.
+Most notably, the sharder consists of two active components: the sharder webhook and the sharder controller.
+Both components realize object assignments in response to different sharding events ([@sec:sharding-events]).
+
+In the evolved design, the extended requirements are addressed by two different architectural changes.
+Firstly, moving partitioning, assignment, and coordination logic to an external sharder deployment configurable via custom resources makes the sharding mechanism independent of the used controller framework and programming language.
+With this, the sharding implementation becomes reusable for any arbitrary Kubernetes controller, fulfilling req. \ref{req:reusable} ([@sec:design-external]).
+
+Limiting the overhead of the sharding mechanism to be independent of the number of sharded API objects (req. \ref{req:constant}) is realized by performing assignments during object admission when required by event \ref{evt:new-object}.
+A mutating webhook is triggered whenever a new unassigned object is created or an existing object is successfully drained by the currently responsible shard ([@sec:design-admission]).
+With this, watching the sharded objects is obsolete and allows removing the watch cache that causes a resource usage proportional to the number of objects.
+Additionally, this change reduces the API request volume caused by assignments and coordination.
 
 ## External Sharder {#sec:design-external}
 
