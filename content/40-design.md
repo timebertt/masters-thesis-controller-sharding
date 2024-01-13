@@ -67,25 +67,54 @@ Additionally, this change reduces the API request volume caused by assignments a
 
 ## External Sharder {#sec:design-external}
 
-Goals:
+The first architectural change generalizes the sharding design and makes the implementation reusable to address req. \ref{req:reusable}.
+Note that this change does not reduce the resource overhead or API request volume to address req. \ref{req:constant}, but only move it to an external deployment.
 
-- address req. \ref{req:reusable}: generalization
-- will not reduce CPU/mem overhead, only move it to an external component
-- will not reduce API request volume
+Instead of running the sharder as another controller in the sharded controller deployment itself, it is extracted to a dedicated external deployment without changing its core logic.
+This allows reusing the sharder for multiple sharded controller deployments in the same cluster.
+However, as the sharder is not part of the same binary as the sharded controller, it needs to be configured explicitly too.
+For this, a new custom resource modeling a ring of controller instances is introduced: the `ClusterRing`.
 
-Ideas:
+```yaml
+apiVersion: sharding.timebertt.dev/v1alpha1
+kind: ClusterRing
+metadata:
+  name: myoperator
+spec:
+  resources:
+  - group: myoperator.timebertt.dev
+    resource: application
+    controlledResources:
+    - group: apps
+      resource: deployments
+    - group: ""
+      resource: configmaps
+```
 
-- simply move sharder to controller manager without changing its core logic
-- keep assigning objects via labels
-- design how shard leases are recognized
-- design how to configure which objects should be sharded
-- define label patterns for object selector
-- design how object relationships are handled, e.g. owner references to the controller's "main object"
+: Example `ClusterRing` {#lst:clusterring}
 
-Problems:
+The sharded controller deployment only runs the actual controllers themselves, i.e., the actual shards.
+Nevertheless, the controller deployment is configured together with the corresponding `ClusterRing` to use matching names.
+The individual instances announce their ring membership by adding a `clusterring` label with the name of the ring as the label value to their shard leases.
 
-- controller-side still has to comply with drain label
-  - must only be implemented once in the controller framework, is acceptable
+Similar to the internal sharder design, object assignments are persisted in the `shard` label on sharded objects.
+In the enhanced external sharder design, ring-specific `shard` and `drain` labels are used that include the name of the corresponding `ClusterRing`.
+Individual controllers use a ring-specific label selector for filtering their watch caches accordingly.
+This allows sharded objects to be part of multiple rings.
+For example, a resource owned by a sharded controller might in turn be reconciled by another sharded controller.
+In this scenario, both controllers would use a dedicated `ClusterRing` that both include the given resource.
+
+- `ClusterRing` contains list of resources that should be sharded
+  - resources can be either main or controlled resources of a controller
+  - for main resources, the object's own metadata is used for determining the partitioning key
+  - for controlled resources, the object's controller reference is used instead
+  - with this, main and controlled resources are assigned to the same shard
+  - multiple main resources are not guaranteed to be assigned to the same shard
+- implementation on controller-side still required, but very limited in scope
+  - announcing ring membership
+  - filtering watch caches
+  - acknowledge drain operations
+  - must only be implemented once in the controller framework, but scope is acceptable
 
 ## Assignments in Admission {#sec:design-admission}
 
