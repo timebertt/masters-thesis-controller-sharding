@@ -1,4 +1,4 @@
-# Requirements Analysis
+# Requirements Analysis {#sec:requirements}
 
 In this thesis, sharding mechanisms leveraged by distributed databases are applied to Kubernetes controllers to resolve the described limitations.
 As described in [@sec:kubernetes-scalability], the core property of a scalable system is that its load capacity increases when resources are added to the system.

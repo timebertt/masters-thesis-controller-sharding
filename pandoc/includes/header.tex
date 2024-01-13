@@ -269,11 +269,17 @@ Prüfer & \Lecturer \\
 % https://tex.stackexchange.com/questions/166416/continue-previous-roman-page-numbering-after-changing-to-arabic
 \newcounter{savepage}
 
-%%% custom numbering for requirements
+%%% custom numbering
 \newcounter{reqCounter}
 \newcommand{\requirement}{%
 \refstepcounter{reqCounter}%
 Req. \arabic{reqCounter}:
+}
+
+\newcounter{evtCounter}
+\newcommand{\event}{%
+\refstepcounter{evtCounter}%
+Event \arabic{evtCounter}:
 }
 
 %%% spacing

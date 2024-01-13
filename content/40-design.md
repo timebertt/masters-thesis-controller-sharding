@@ -1,37 +1,56 @@
 # Design
 
-- design based on study project
-- evolve design to address extended requirements
+This chapter presents a design to address the requirements presented in chapter [-@sec:requirements].
+It is based on the design presented in the previous study project ([@sec:related-study-project]) [@studyproject] because it already fulfills parts of the requirements (req. 1–5).
+This thesis evolves the design to address the extended set of requirements (req. 6–8).
 
 ## Sharding Events
 
-Analyze design of study project: which events are handled by the sharding mechanism.
-Which actions need to performed for them:
+To enhance the existing design, it is important to analyze which sharding-related events must be handled by the sharding mechanism.
+Based on this, the following sections develop changes to the design with regards to how the individual events are detected.
 
-- evt. 1: new object is created or object is drained (drain and shard label are not present)
-  - object is unassigned, assign directly
-  - if no shard is available, no assignment is performed (handled later on by action 2)
+The following is a complete list of sharding events that must be considered by the design and what actions need to be taken for each individual event.
 
-- evt. 2: new shard becomes available
-  - determine objects that should be assigned to new shard
-  - if object is not assigned yet, assign directly
-  - if object is assigned to unavailable shard, assign directly
-  - if object is assigned to available shard, drain object
+\subsubsection*{\event\label{evt:new-shard}A new shard becomes available}
 
-- evt. 3: existing shard becomes unavailable
-  - determine objects that are assigned to shard
-  - assign all objects to another shard directly
-  - if no shard is available, unassign objects OR no assignment is performed? (handled by action 2)
+When a shard becomes available for assignments, none of the existing objects are assigned to it.
+To achieve a good distribution of reconciliation work, a rebalancing needs to be performed.
+
+For this, the sharder needs to determine which objects should be assigned to the new shard according to the partitioning algorithm.
+It needs to consider all objects and perform one of the following actions accordingly:
+
+- If the object is not assigned yet, assign it directly to the desired available shard.
+- If the object is assigned to an unavailable shard, assign it directly to the desired available shard.
+- If the object is assigned to an available shard but should be moved to another shard, start the handover protocol by draining the object.
+
+\subsubsection*{\event\label{evt:shard-down}An existing shard becomes unavailable}
+
+If an existing shard becomes unavailable, all objects that are assigned to it must be moved to another available shard.
+Here, the sharder needs to consider all objects that currently have the `shard` label set to the unavailable shard.
+For every object, the desired available shard is determined using the partitioning algorithm and the `shard` label is added accordingly.
+If the object was in the process of being drained – i.e., it still carries the `drain` label – the sharder must remove the `drain` label together with adding the `shard` label.
+If there is no remaining available shard, the sharder doesn't need to take any action.
+In this case, objects effectively stay unassigned until a new shard becomes available (evt. \ref{evt:new-shard}).
+
+\subsubsection*{\event\label{evt:new-object}A new object is created, or an object is drained}
+
+When a new API object is created by the user or a controller, it is unassigned and neither carries the `shard` nor the `drain` label.
+This is also the case when an existing object is should be moved to another shard and drained successfully by the currently responsible shard.
+
+In these cases, the sharder should directly assign the object to one of the available shards.
+If there is no available shard, the assignment is deferred until a new shard becomes available (evt. \ref{evt:new-shard}).
 
 ## Overview
 
+![Sharding architecture](../draw/architecture.pdf)
+
 How to address extended requirements:
 
-- generalization (req. 6): independent from controller framework and programming language
+- generalization (req. \ref{req:reusable}): independent from controller framework and programming language
   - addressed in step 1 ([@sec:design-external])
   - move partitioning, assignment, coordination logic to external sharder
   - design how to configure which objects should be sharded
-- constant overhead (req. 7): required design/implementation enhancements:
+- constant overhead (req. \ref{req:constant}): required design/implementation enhancements:
   - addressed in step 2 ([@sec:design-admission])
   - reduce memory overhead by sharder
     - eliminate cache for sharded objects (grows with the number of sharded objects)
@@ -48,7 +67,7 @@ How to address extended requirements:
 
 Goals:
 
-- address req. 6: generalization
+- address req. \ref{req:reusable}: generalization
 - will not reduce CPU/mem overhead, only move it to an external component
 - will not reduce API request volume
 
@@ -70,7 +89,7 @@ Problems:
 
 Goals:
 
-- address req. 7: constant overhead
+- address req. \ref{req:constant}: constant overhead
 - reduce CPU/mem overhead
 - reduce API request volume
 

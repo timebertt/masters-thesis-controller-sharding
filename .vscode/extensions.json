@@ -7,5 +7,6 @@
 		"davidanson.vscode-markdownlint",
 		"streetsidesoftware.code-spell-checker",
 		"ms-python.python",
+		"hediet.vscode-drawio",
 	],
 }
