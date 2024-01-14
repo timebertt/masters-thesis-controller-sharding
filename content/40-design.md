@@ -104,17 +104,24 @@ This allows sharded objects to be part of multiple rings.
 For example, a resource owned by a sharded controller might in turn be reconciled by another sharded controller.
 In this scenario, both controllers would use a dedicated `ClusterRing` that both include the given resource.
 
-- `ClusterRing` contains list of resources that should be sharded
-  - resources can be either main or controlled resources of a controller
-  - for main resources, the object's own metadata is used for determining the partitioning key
-  - for controlled resources, the object's controller reference is used instead
-  - with this, main and controlled resources are assigned to the same shard
-  - multiple main resources are not guaranteed to be assigned to the same shard
-- implementation on controller-side still required, but very limited in scope
-  - announcing ring membership
-  - filtering watch caches
-  - acknowledge drain operations
-  - must only be implemented once in the controller framework, but scope is acceptable
+Apart from the name, the `ClusterRing` object contains a list of resources that should be sharded, i.e., reconciled by a sharded ring of controllers.
+Listed resources can either be the main resource of a controller or controlled resources ([@sec:apimachinery]).
+For the controller's main resource, the object's own metadata is used for determining the partitioning key.
+In contrast to this, the partitioning key of controlled objects is determined based on the metadata contained in the objects' controller reference.
+With this, main and controlled resources are assigned to the same shard as required by many controllers ([@sec:controller-machinery]).
+However, multiple main resources listed in `ClusterRing` specifications are not guaranteed to be assigned to the same shard.
+
+This architectural change extracts the core logic of the sharding mechanism to an external, generic sharder.
+It allows to reuse the implementation and apply the sharding mechanism generically to any controller.
+While the core logic is implemented externally, the implementation of controllers still needs to be adapted to comply with the sharding mechanism.
+However, the required changes are limited in scope and simple to implement:
+
+- controllers must announce themselves to the sharder via individual shard leases
+- controllers must use ring-specific label selectors to filter their watch caches
+- controllers must follow the handover protocol and acknowledge drain operations initiated by the sharder
+
+These changes need to be implemented in the programming language of the controller itself and work with the leveraged controller framework.
+However, implementing these changes generically in the respective controller frameworks would allow controller developers to adopt the sharding mechanisms easily.
 
 ## Assignments in Admission {#sec:design-admission}
 
