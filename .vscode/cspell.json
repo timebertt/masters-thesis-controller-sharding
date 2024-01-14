@@ -30,6 +30,7 @@
         "kubernetes",
         "pandoc",
         "rebalancing",
+        "resyncs",
         "schedulable",
         "sharded",
         "sharder",

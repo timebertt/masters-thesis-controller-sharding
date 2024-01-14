@@ -4,7 +4,7 @@ This chapter presents a design to address the requirements presented in chapter 
 It is based on the design presented in the previous study project ([@sec:related-study-project]) [@studyproject] because it already fulfills parts of the requirements (req. 1–5).
 This thesis evolves the design to address the extended set of requirements (req. 6–8).
 
-## Sharding Events
+## Sharding Events {#sec:sharding-events}
 
 To enhance the existing design, it is important to analyze which sharding-related events must be handled by the sharding mechanism.
 Based on this, the following sections develop changes to the design with regards to how the individual events are detected.
@@ -123,50 +123,60 @@ However, the required changes are limited in scope and simple to implement:
 These changes need to be implemented in the programming language of the controller itself and work with the leveraged controller framework.
 However, implementing these changes generically in the respective controller frameworks would allow controller developers to adopt the sharding mechanisms easily.
 
+\newpage
+
 ## Assignments in Admission {#sec:design-admission}
 
-Goals:
+The second architectural change ensures that overhead of the sharding mechanism doesn't grow with the number of sharded objects.
+It ensures a constant overhead for true horizontal scalability of sharded controller setups, addressing req. \ref{req:scale-out} and \ref{req:constant}.
+This change builds upon the previous one to limit the sharder's resource usage and to reduce the API request volume caused by assignments and coordination.
 
-- address req. \ref{req:constant}: constant overhead
-- reduce CPU/mem overhead
-- reduce API request volume
+These goals are achieved by performing assignments in the API admission phase, which replaces the sharder's costly watch cache for sharded objects.
+Considering the sharding-related events that need to be handled by the sharding mechanism ([@sec:sharding-events]), the watch cache for sharded objects is only needed to detect and handle evt. \ref{evt:new-object}, i.e., when new unassigned objects are created or existing objects are drained successfully.
+This event always involves a mutating API request for the sharded object itself.
+Hence, admission control logic can be leveraged for performing actions in response to the request instead of triggering sharder reconciliations in response to a watch event.
 
-Ideas:
+In the presented design, a mutating admission webhook served by the sharder is used which can be configured in all clusters without changing control plane components.
+Alternatively, an in-tree admission plugin in the Kubernetes API server could also be used to achieve the same thing, but it requires changing the API server itself.
+Hence, the admission webhook is more flexible but adds latency to API requests though.
+The sharder is responsible for setting up the `MutatingWebhookConfigurations` as needed.
+For this, the `ClusterRing` controller creates one webhook configuration for each ring with a matching list of sharded API resources.
 
-- shard labels are added to objects during admission: either in admission plugin or webhook
-- when ring state changes, controller triggers reassignment or drain on all relevant objects
-- admission handles event 1 (new object or object drained)
-  - handles object-related events, that can be detected solely by mutating API requests to objects
-  - currently, watch events (~cache) for the sharded objects are used for this
-  - with assignments in admission, watches and caches can be dropped
-  - webhook adds significant latency to mutating API requests
-    - only needs to act on unassigned objects -> add object selector
-- controller handles event 2 and 3 (ring state changes)
-  - handles ring-related events, that can be detected solely by watch events for leases
-  - sharder controller doesn't need to watch objects, only needs watch for leases
-  - event 2 (new shard)
-    - list all objects and determine desired shard
-    - add drain label to all objects that are not assigned to desired shard
-  - event 3 (dead shard)
-    - list all objects assigned to dead shard
-    - reassign all objects immediately
-  - controller might interfere with itself (might act on a single object concurrently) -> use optimistic locking for all object mutations
+The sharder still watches shard leases for detecting ring state changes (evt. \ref{evt:new-shard} and \ref{evt:shard-down}).
+It runs a controller that handles both events as described in [@sec:sharding-events] accordingly.
+For this, the sharder doesn't need to watch the sharded objects themselves.
+Instead it can use lightweight metadata-only list requests whenever object assignments of a `ClusterRing` need to be reconciled.
+With this, both ring-related sharding events can be detected and handled by a sharder controller solely watching shard leases.
+
+The webhook server shares the watch cache for shard leases with the sharder controller for constructing the consistent hash ring.
+When it receives a webhook request, the handler decodes the contained object from the original API request and determines the desired shard based on its metadata.
+It then responds with corresponding patch operations to mutate the `shard` label as desired.
+
+In a distributed system like this, failures in inter-component communication can occur any time and need to be handled accordingly.
+Concretely, the design must cater for situations in which the webhook server doesn't perform object assignments as needed due to network failures or similar issues.
+Hence, the sharder controller is triggered periodically to perform reconciliations (resyncs) of all object assignments for the case that some objects were not correctly assigned by the webhook.
+This is a fallback mechanism that is never needed during normal operation, but is essential for guaranteeing eventual consistency in the distributed system.
+
+To summarize, this design enhancement trades the resource overhead caused by watching sharded objects for periodic resyncs with non-cached list requests and an increase in request latency.
+However, as chapter [-@sec:implementation] shows, the negative impact on API request latency can be reduced by the use of object selectors to be practically irrelevant.
+If the API latency added by webhook requests becomes problematic nevertheless, an in-tree admission plugin in the API server can be considered as a solution.
+
+Most importantly, this architectural change eliminates all elements in the sharding design that grow in resource usage with the number of sharded objects.
+This is crucial in achieving horizontal scalability for Kubernetes controllers.
+Also, it significantly reduces the API request volume added by the sharding assignments and coordination and with this the load on the control plane and etcd in particular.
+More concretely, object creation and initial assignment are combined into a single mutating API request.
+In other words, the sharding mechanism doesn't incur any additional mutating API requests during object creations.
+The additional API requests needed by the handover protocol are also reduced by one third in comparison to the existing design.
+Instead of performing three object changes for initiating the drain operation, acknowledging it, and performing a new assignment, the new sharding design involves only two mutations by combining the later two requests into one.
+
+<!--
 - controller and admission view on ring state could be slightly out of date
   - objects might end up on "wrong" shards
-    - event 1: new shard just got ready, not observed by admission, new object incorrectly assigned to another shard
-    - event 2: sharder drains object, controller removes drain/shard label, admission assigns to the same shard again
+    - event \ref{evt:new-shard}: new shard just got ready, not observed by admission, new object incorrectly assigned to another shard
+    - event \ref{evt:shard-down}: sharder drains object, controller removes drain/shard label, admission assigns to the same shard again -> cannot happen, right?
   - might be acceptable
     - objects are only assigned to available shards
     - single responsible shard is guaranteed
     - doesn't violate original requirements
-  - if eventual consistency should still be guaranteed:
-    - periodically resyncs all leases
-    - determine objects that should not be assigned to that lease and reassign
   - moving into a single component (running controller and serving webhook) doesn't solve the problem: will need to run multiple instances which watch individually again
-- webhooks need to be created for all objects that should be sharded
-
-Summary:
-
-- trades resource overhead (object cache) for a few API requests (lists) and latency (webhook)
-- latency can be reduced with object selector and/or by moving to admission plugin
-- reduces API request volume a bit because drain and new assignment are now combined into a single API request
+-->
