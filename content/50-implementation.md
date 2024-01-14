@@ -1,19 +1,57 @@
 # Implementation {#sec:implementation}
 
-- controllers
-  - shard lease
+## ClusterRing Resource
+
+- `ClusterRing`
+  - label patterns
+  - RBAC for sharder
+
+## Sharder Components
+
+- partitioning
   - consistent hash ring from leases
-- ClusterRing
-  - namespace selector
+- controllers
+  - clusterring
+  - shard lease
+  - sharder
+    - (periodic) sharder syncs =~ rebalancing
+      - reduce load on API server
+      - paginated lists, metadata-only, `resourceVersion=0`
+      - otherwise, memory consumption would spike proportional to number of objects during syncs
 - webhook
+  - namespace selector
+    - exclude kube-system, sharding-system by default
   - ring-specific path
   - object selector
     - only handle unassigned objects, where label change is needed
     - reduce impact on request latency
-  - failure policy Ignore
+  - cert-manager
+  - failure policy Ignore, low timeout
   - HA setup
-- (periodic) sharder syncs =~ rebalancing
-  - paginated lists
-  - otherwise, memory consumption would spike proportional to number of objects during syncs
-  - also reduces load on API server
-- reusable shard components
+
+## Shard Components
+
+- (reusable) shard components
+  - written for controller-runtime
+  - shard lease
+  - label selector
+  - controller wrapper
+
+## Example Setup
+
+- installation
+  - CRDs
+  - sharding-system
+  - sharder, RBAC
+  - monitoring
+    - sharder metrics
+    - sharding-exporter metrics
+  - development/evaluation setup
+  - kind
+- example shard
+  - run through demo (getting started)
+  - dynamic instance changes
+
+## Limitations
+
+- `generateName` not supported for `main` resources
