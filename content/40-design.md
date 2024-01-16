@@ -91,7 +91,7 @@ spec:
       resource: configmaps
 ```
 
-: Example `ClusterRing` {#lst:clusterring}
+: Example ClusterRing resource {#lst:clusterring}
 
 The sharded controller deployment only runs the actual controllers themselves, i.e., the actual shards.
 Nevertheless, the controller deployment is configured together with the corresponding `ClusterRing` to use matching names.
