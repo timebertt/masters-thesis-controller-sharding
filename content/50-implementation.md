@@ -226,8 +226,10 @@ Second, it sets the `resourceVersion` request parameter to `0`, which instructs 
 And finally, the controller performs paginated list requests to keep a limited number of objects in memory at any given time (500 objects by default).
 This prevents spikes in the sharder's memory consumption.
 Such spikes would be proportional to the number of sharded objects, which would limit the scalability of the system and conflict with req. \ref{req:constant}.
+\todo{controller triggers webhook for assignments}
+\todo{controller needs RBAC for sharded resources}
 
-## Shard Components
+## Shard Components {#sec:impl-shard}
 
 [^implementation]: <https://github.com/timebertt/kubernetes-controller-sharding>
 
@@ -309,7 +311,7 @@ func run() error {
 }
 ```
 
-: Maintain a shard lease in controller-runtime {#lst:go-shard-lease}
+: Maintaining a shard lease in controller-runtime {#lst:go-shard-lease}
 
 Next, the sharded controllers need to use a label selector on watches for all sharded resources listed in the `ClusterRing` as described in [@sec:impl-clusterring].
 The shard label's value is the name of the shard, i.e., the name of the shard lease and the shard lease's `holderIdentity`.
@@ -349,7 +351,7 @@ func run() error {
 }
 ```
 
-: Filter the watch cache in controller-runtime {#lst:go-filter-cache}
+: Filtering the watch cache in controller-runtime {#lst:go-filter-cache}
 
 ```text
 drain.alpha.sharding.timebertt.dev/clusterring-<hash>-<clusterring-name>
@@ -399,23 +401,67 @@ func add(mgr manager.Manager, clusterRingName, shardName string) error {
 }
 ```
 
-: Acknowledge drain operations in controller-runtime {#lst:go-wrapper}
+: Acknowledging drain operations in controller-runtime {#lst:go-wrapper}
 
 Apart from changing the controller's business logic to first check the `drain` label, developers must ensure that the watch event filtering logic (predicates in controller-runtime) always reacts on events with the `drain` label set independent of the controller's actual predicates.
 In controller-runtime, the helpers from the implementation repository can be used for constructing correct predicates and a wrapping reconciler that correctly implements the drain operation as shown in [@lst:go-wrapper].
 
 ## Example Setup
 
-- installation
-  - CRDs
-  - sharding-system
-  - sharder
-  - RBAC for sharder corresponding to ClusterRing
-  - monitoring
-    - sharder metrics
-    - sharding-exporter metrics
-  - development/evaluation setup
-  - kind
-- example shard
-  - run through demo (getting started)
-  - dynamic instance changes
+The sharding system components can be installed from manifests in the implementation repository.
+The default installation includes the `sharding-system` namespace, the `ClusterRing` `CustomResourceDefinition`, a highly-available `sharder` deployment, and a cert-manager `Certificate` for the webhook server.
+
+In addition to installing the system components, manifests are available for installing monitoring for the sharding setup.
+This includes a prometheus-operator `ServiceMonitor` [@prometheusoperatordocs], that configures a Prometheus instance how to scrape the sharder's metrics [@prometheusdocs].
+The set of metrics includes various counters for the core actions taken by the sharder, e.g., the number of assignments performed by the sharder webhook.
+These can be used to monitor the sharding mechanism and ensure the sharder is functioning properly.
+
+Furthermore, the monitoring installation includes a metrics exporter based on kube-state-metrics [@kubestatemetrics].
+It exports metrics about the state of `ClusterRings` and shard `Leases`, e.g., the observed shard state and the number of available shards per `ClusterRing`.
+
+For easily demonstrating the sharding mechanism, an example shard implementation is available in the implementation repository as well.
+It leverages the reusable shard components described in [@sec:impl-shard] for building a simple sharded controller based on controller-runtime.
+The controller reconciles `ConfigMaps` in the `default` namespace and creates a `Secret` including the configmap's name prefixed with `dummy-`.
+The created `Secrets` are controlled by the respective `ConfigMap`, i.e., they have an `ownerReference` with `controller=true` to the `ConfigMap`.
+
+All these components are bundled together in a comprehensive development and testing setup.
+It serves as an entrypoint for controller developers for getting started with controller sharding.
+The setup is based on a local kind cluster [@kinddocs] for development and testing without infrastructure cost.
+In addition to the sharding system components and the example shard, the setup automatically installs several required external components for a smooth experience.
+This includes: cert-manager [@certmanagerdocs], a monitoring setup based on kube-prometheus [@prometheusoperatordocs], a profiling setup based on parca [@parcadocs], and an ingress controller.
+[@lst:example-setup] shows how the example setup can be bootstrapped.
+
+```text
+$ make kind-up
+$ export KUBECONFIG=$PWD/hack/kind_kubeconfig.yaml
+$ make deploy TAG=latest
+
+$ kubectl -n sharding-system get po
+NAME                       READY   STATUS    RESTARTS   AGE
+sharder-57889fcd8c-p2wxf   1/1     Running   0          44s
+sharder-57889fcd8c-z6bm5   1/1     Running   0          44s
+
+$ kubectl get po
+NAME                     READY   STATUS    RESTARTS   AGE
+shard-7997b8d9b7-9c2db   1/1     Running   0          45s
+shard-7997b8d9b7-9nvr2   1/1     Running   0          45s
+shard-7997b8d9b7-f9gtd   1/1     Running   0          45s
+
+$ kubectl get clusterring
+NAME      READY   AVAILABLE   SHARDS   AGE
+example   True    3           3        64s
+
+$ kubectl get lease -L alpha.sharding.timebertt.dev/clusterring, alpha.sharding.timebertt.dev/state
+NAME                     HOLDER                   AGE   CLUSTERRING   STATE
+shard-7997b8d9b7-9c2db   shard-7997b8d9b7-9c2db   75s   example       ready
+shard-7997b8d9b7-9nvr2   shard-7997b8d9b7-9nvr2   75s   example       ready
+shard-7997b8d9b7-f9gtd   shard-7997b8d9b7-f9gtd   76s   example       ready
+
+$ kubectl get mutatingwebhookconfiguration -l app.kubernetes.io/ name=controller-sharding
+NAME                                    WEBHOOKS   AGE
+sharding-clusterring-50d858e0-example   1          2m50s
+```
+
+: Bootstrapping the example setup {#lst:example-setup}
+
+\todo[inline]{run through demo (getting started), dynamic instance changes?}
