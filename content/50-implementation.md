@@ -4,7 +4,7 @@ This chapter describes an implementation of the design presented in chapter [-@s
 It elaborates on the most important aspects of implementing the sharding mechanism in practice.
 Afterwards, the implementation is used for evaluating the presented work in chapter [-@sec:evaluation].
 
-## ClusterRing Resource
+## ClusterRing Resource {#sec:impl-clusterring}
 
 The central element of the sharding design is the `ClusterRing` custom resource.
 A corresponding `CustomResourceDefinition` is installed together with the sharder itself.
@@ -186,6 +186,34 @@ Problems in communicating with the sharder or executing the webhook handler shou
 Hence, the webhook configuration sets a short timeout and instructs the API server to ignore failures in calling the webhook.
 For managing the webhook server's certificate and populating the certificate bundle in the webhook configuration, the sharder relies on cert-manager [@certmanagerdocs] per default by adding the `cert-manager.io/inject-ca-from` annotation.
 
+```json
+{
+  "kind": "AdmissionReview",
+  "apiVersion": "admission.k8s.io/v1",
+  "response": {
+    "allowed": true,
+    "status": {
+      "message": "assigning object",
+      "code": 200
+    },
+    "patchType": "JSONPatch",
+    "patch": [
+      {
+        "op": "add",
+        "path": "/metadata/labels/ shard.alpha.sharding.timebertt.dev~1clusterring-50d858e0-example",
+        "value": "shard-74bbb768b9-wpsfb"
+      }
+    ]
+  }
+}
+```
+
+: Example sharder webhook response {#lst:webhook-response}
+
+When the webhook is called by the API server, the sharder first determines the corresponding `ClusterRing` object from the request path and the partitioning key to use for the requested object.
+It then reads all shards of the ring from the `Lease` cache and constructs a consistent hash ring with all available instances.
+Afterward, it determines the desired shard and responds to the API server with an object patch adding the `shard` label as shown in [@lst:webhook-response].
+
 Finally, the sharder runs the "sharder" controller that handles changes to the set of available shards and to the ring's configuration.
 It watches `ClusterRings` and shard `Leases` and reconciles all object assignments of a ring whenever its configuration changes or when a shard becomes available or unavailable (evt. \ref{evt:new-shard} and \ref{evt:shard-down}).
 With this, the sharder can perform automatic rebalancing in response to dynamic instance changes or configuration changes (e.g., additional sharded resources) without human interaction.
@@ -201,11 +229,180 @@ Such spikes would be proportional to the number of sharded objects, which would 
 
 ## Shard Components
 
-- (reusable) shard components
-  - written for controller-runtime
-- shard lease
-- label selector
-- controller wrapper
+[^implementation]: <https://github.com/timebertt/kubernetes-controller-sharding>
+
+While the core sharding logic is implemented in the external sharder, the sharded controllers still need to implement a few aspects to comply with the `ClusterRing` contract.
+To use sharding in an arbitrary Kubernetes controller, these aspects need to be implemented ([@sec:design-external]):
+
+- The shards announce ring membership by maintaining individual `Leases` instead of performing leader election on a single `Lease`.
+- The controllers only watch, cache, and reconcile objects assigned to the respective shard by adding a shard-specific label selector to their watches.
+- The controllers acknowledge object movements during rebalancing by removing the `drain` and `shard` label whenever the `drain` label is set, and stop reconciling the object immediately.
+
+The implementation repository [^implementation] contains reusable reference implementations for these aspects.
+They can be reused by controllers based on controller-runtime [@controllerruntime].
+However, the aspects can also be implemented similarly in controllers that don't use controller-runtime or that are written in another programming language than Go.
+
+```yaml
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  labels:
+    alpha.sharding.timebertt.dev/clusterring: my-clusterring
+  name: my-operator-565df55f4b-5vwpj
+  namespace: operator-system
+spec:
+  holderIdentity: my-operator-565df55f4b-5vwpj # must equal the Lease's name
+  leaseDurationSeconds: 15 # similar to usual leader election
+```
+
+: Example shard lease {#lst:shard-lease}
+
+Most controllers already perform leader election using a central `Lease` lock object and are configured to stop any controllers when they loose their `Lease`.
+In fact, most implementations exit the entire process when failing to renew the lock for safety.
+These leader election mechanisms can be reused for maintaining the shard `Lease` as shown in [@lst:shard-lease].
+Instead of using a central `Lease` object for all instances, each instance acquires and maintains its own `Lease` object to announce itself to the sharder.
+A shard may only run its controllers as long as it holds its shard `Lease`.
+I.e., when it fails to renew the shard `Lease` in time, it also needs to stop all controllers.
+Similar to usual leader election, a shard may release its own shard `Lease` on graceful termination by removing the `holderIdentity`.
+This immediately triggers reassignments by the sharder to minimize the duration where no shard is acting on a subset of objects.
+
+In essence, the existing leader election machinery can be reused for maintaining the shard `Lease` with two changes.
+First, the shard `Lease` needs to be labelled with `alpha.sharding.timebertt.dev/clusterring=<clusterring-name>` to specify which `ClusterRing` the shard belongs to.
+Second, the name of the shard `Lease` needs to match the `holderIdentity`.
+By default, the instance's hostname is used for both values.
+If the `holderIdentity` differs from the name, the sharder assumes that the shard is unavailable.
+In controller-runtime, the shard's manager can be configured to maintain a shard `Lease` as shown in [@lst:go-shard-lease].
+
+```go
+import (
+  shardlease "github.com/timebertt/kubernetes-controller-sharding/pkg/shard/lease"
+  "sigs.k8s.io/controller-runtime/pkg/client/config"
+  "sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+func run() error {
+  shardLease, err := shardlease.NewResourceLock(
+    restConfig, nil, shardlease.Options{
+      ClusterRingName: "my-clusterring",
+    },
+  )
+  if err != nil {
+    return err
+  }
+
+  mgr, err := manager.New(restConfig, manager.Options{
+    // Use manager's leader election mechanism for maintaining the shard lease.
+    // With this, controllers will only run as long as manager holds the shard
+    // lease. After graceful termination, the shard lease will be released.
+    LeaderElection:                      true,
+    LeaderElectionResourceLockInterface: shardLease,
+    LeaderElectionReleaseOnCancel:       true,
+
+    // other options ...
+  })
+  if err != nil {
+    return err
+  }
+
+  // add controllers and start manager as usual ...
+  return nil
+}
+```
+
+: Maintain a shard lease in controller-runtime {#lst:go-shard-lease}
+
+Next, the sharded controllers need to use a label selector on watches for all sharded resources listed in the `ClusterRing` as described in [@sec:impl-clusterring].
+The shard label's value is the name of the shard, i.e., the name of the shard lease and the shard lease's `holderIdentity`.
+With this, the shard will only cache the objects assigned to it and the controllers will only reconcile these objects.
+Note that when using a label selector on a watch request and the label changes so that the selector doesn't match anymore, the API server will emit a `DELETE` watch event.
+In controller-runtime, the shard's manager can be configured to only watch and reconcile objects assigned to it as shown in [@lst:go-filter-cache] [^filter-cache-version].
+
+[^filter-cache-version]: The shown code works with controller-runtime v0.16 and v0.17, other versions might require deviating configuration.
+
+```go
+import (
+  shardingv1alpha1 "github.com/timebertt/kubernetes-controller-sharding/pkg/apis/sharding/ v1alpha1"
+  "k8s.io/apimachinery/pkg/labels"
+  "sigs.k8s.io/controller-runtime/pkg/cache"
+  "sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+func run() error {
+  // ...
+
+  mgr, err := manager.New(restConfig, manager.Options{
+    Cache: cache.Options{
+      // Configure cache to only watch objects that are assigned to this shard.
+      // This shard only watches sharded objects, so we can configure the label
+      // selector on the cache's global level. If the shard watches sharded
+      // objects as well as non-sharded objects, use cache.Options.ByObject to
+      // configure the label selector on object level.
+      DefaultLabelSelector: labels.SelectorFromSet(labels.Set{
+        shardingv1alpha1.LabelShard(shardingv1alpha1.KindClusterRing, "", "my-clusterring"): shardLease.Identity(),
+      }),
+    },
+
+    // other options ...
+  })
+
+  // ...
+}
+```
+
+: Filter the watch cache in controller-runtime {#lst:go-filter-cache}
+
+```text
+drain.alpha.sharding.timebertt.dev/clusterring-<hash>-<clusterring-name>
+```
+
+: Ring-specific shard label pattern {#lst:drain-label}
+
+Finally, the sharded controllers need to comply with the handover protocol initiated by the sharder.
+When the sharder needs to move an object from an available shard to another shard for rebalancing, it first adds the `drain` label to instruct the currently responsible shard to stop reconciling the object.
+The shard needs to acknowledge this operation, as the sharder must prevent concurrent reconciliations of the same object in multiple shards.
+The `drain` label's key is specific to the `ClusterRing` and follows the pattern shown in [@lst:drain-label].
+The `drain` label's value is irrelevant, only the presence of the label is relevant.
+
+```go
+import (
+  shardcontroller "github.com/timebertt/kubernetes-controller-sharding/pkg/shard/ controller"
+  "sigs.k8s.io/controller-runtime/pkg/builder"
+  "sigs.k8s.io/controller-runtime/pkg/manager"
+  "sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+func add(mgr manager.Manager, clusterRingName, shardName string) error {
+  var r reconcile.Reconciler
+
+  // Use the shardcontroller package as helpers for:
+  // - a predicate that triggers when the drain label is present
+  //   (even if the actual predicates don't trigger)
+  // - wrapping the actual reconciler in a reconciler that handles the drain
+  //   operation
+  return builder.ControllerManagedBy(mgr).
+    Named("example").
+    For(
+      &corev1.ConfigMap{}, builder.WithPredicates(
+        shardcontroller.Predicate(
+          clusterRingName, shardName, MyConfigMapPredicate(),
+        ),
+      ),
+    ).
+    Owns(&corev1.Secret{}, builder.WithPredicates(MySecretPredicate())).
+    Complete(
+      shardcontroller.NewShardedReconciler(mgr).
+        For(&corev1.ConfigMap{}). // must match the kind in For() above
+        InClusterRing(clusterRingName).
+        WithShardName(shardName). // must match the shard lease's name
+        MustBuild(r),
+    )
+}
+```
+
+: Acknowledge drain operations in controller-runtime {#lst:go-wrapper}
+
+Apart from changing the controller's business logic to first check the `drain` label, developers must ensure that the watch event filtering logic (predicates in controller-runtime) always reacts on events with the `drain` label set independent of the controller's actual predicates.
+In controller-runtime, the helpers from the implementation repository can be used for constructing correct predicates and a wrapping reconciler that correctly implements the drain operation as shown in [@lst:go-wrapper].
 
 ## Example Setup
 
@@ -213,7 +410,7 @@ Such spikes would be proportional to the number of sharded objects, which would 
   - CRDs
   - sharding-system
   - sharder
-  - RBAC for sharder
+  - RBAC for sharder corresponding to ClusterRing
   - monitoring
     - sharder metrics
     - sharding-exporter metrics
