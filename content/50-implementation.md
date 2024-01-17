@@ -406,7 +406,7 @@ func add(mgr manager.Manager, clusterRingName, shardName string) error {
 Apart from changing the controller's business logic to first check the `drain` label, developers must ensure that the watch event filtering logic (predicates in controller-runtime) always reacts on events with the `drain` label set independent of the controller's actual predicates.
 In controller-runtime, the helpers from the implementation repository can be used for constructing correct predicates and a wrapping reconciler that correctly implements the drain operation as shown in [@lst:go-wrapper].
 
-## Example Setup
+## Example Setup {#sec:impl-setup}
 
 The sharding system components can be installed from manifests in the implementation repository.
 The default installation includes the `sharding-system` namespace, the `ClusterRing` `CustomResourceDefinition`, a highly-available `sharder` deployment, and a cert-manager `Certificate` for the webhook server.
