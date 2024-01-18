@@ -1,24 +1,57 @@
 # Evaluation {#sec:evaluation}
 
+This chapter evaluates the presented design (chapter [-@sec:design]) and implementation (chapter [-@sec:implementation]) by conducting systematic load test experiments.
+The components are observed by a monitoring setup to perform measurements that are discussed eventually.
+
 ## Experiment Setup
 
-- based on example setup [@sec:impl-setup]
-- adds webhosting-operator from study project [@studyproject]
-  - adapted to external sharder
-  - internal sharder optional
-  - both mechanisms supported for comparison
-- precisely describe experiment setup: scale/compute resources of control plane
+The development and testing setup described in [@sec:impl-setup] serves as a basis for the experiment setup used for evaluation.
+Most notably, it uses the sharding system components and monitoring setup based on kube-prometheus [@prometheusoperatordocs].
+In addition, it also deploys the webhosting-operator as an example sharded controller.
+The webhosting-operator was developed in the context of the previous study project and supports enabling the sharding mechanism based on the internal sharder design ([@sec:related-study-project]) [@studyproject].
+To evaluate the new external sharder mechanism presented in this thesis, the webhosting-operator is adapted to comply with the contract for `ClusterRings` similar to [@sec:impl-shard].
+With this, the webhosting-operator can be deployed in three different configurations: singleton (sharding disabled), internal sharder (design from study project), external sharder (design from this thesis).
+This allows comparing all three setups using load test experiments.
+\todo{more details?}
+
+As described in [@sec:controller-scalability], the scale of controller setups can be described in two dimensions: the number of API objects and the churn rate of API objects.
+The webhosting-operator's main resource are `Website` objects, which control `Deployment`, `ConfigMap`, `Service`, and `Ingress` objects.
+Accordingly, increasing the load on the webhosting-operator involves creating many `Website` objects and triggering `Website` reconciliations.
+Additionally, changing the `Theme` referenced by a `Website`, also triggers a `Website` reconciliation.
+Hence, the object churn rate of the webhosting-operator can also be increased by mutating the referenced `Themes`.
+
+Load test experiments are conducted using the experiment tool developed as part of the study project [@studyproject].
+It runs different experiment scenarios which continuously create and delete `Website` objects and trigger reconciliations for them.
+With this, it can be used for increasing the scale of the example operator setup according to the described load dimensions.
+During load tests, the webservers configured by `Website` objects are not actually run.
+Running thousands of individual webservers would require an immense amount of compute resources although it is not required the managing controller itself.
+Hence, the website's `Deployment` is configured with `spec.replicas=0`.
+With this, the usual reconciliation flow of `Websites` is not changed, as the controller still waits for the `Available` condition of `Deployments` to be true, but no compute power is required for actually running the webservers.
+
+\todo[inline]{described resources, configuration}
+<!--
+- precisely describe experiment setup
+  - worker pools
+  - sharder:
+    - requests, limits
+    - on which worker pool
+    - configuration: concurrent workers
+  - webhosting-operator
+    - requests, limits
+    - on which worker pool
+    - configuration: concurrent workers
+  - scale/compute resources of control plane
   - observe that the system is not limited:
     - etcd: CPU throttling, disk IOPS, WAL sync, DB sync
     - API server: CPU throttling, max inflight requests
     - webhosting-operator: CPU throttling, max active workers, ...
   - kube-controller-manager API rate limits
-- load test
-  - ref load dimensions in [@sec:controller-scalability]: number of objects, churn rate
-  - different scenarios with different and varying load
+-->
 
 ## Measurements
 
+- measurements taken using Prometheus
+  - retrieved using measure tool
 - define scalability requirements / SLOs
 - Kubernetes SLO 1 and 2 must be satisfied [@sec:kubernetes-scalability]
   - in experiment stricter: needs to include extended resources, needs to include webhook latency
@@ -35,6 +68,7 @@
   - restraining resources difficult, e.g., memory -> would crash
 - instead, run load tests with varying load, ensure the SLOs are met, and observe the required resource usage
   - higher resource usage means added resources
+  - resource usage measurements allow deducing how many resources must be added to the system to sustain the generated load
   - similar to k8s scalability tests
 - measure resource consumption using cadvisor
   - CPU, memory, network traffic
