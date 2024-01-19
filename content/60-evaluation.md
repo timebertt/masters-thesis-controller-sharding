@@ -71,6 +71,7 @@ Hence, the cluster is considered to perform well if the stricter measurements st
 The central store for control plane metrics is consulted for verifying that both SLOs are met using the queries shown in [@lst:k8s-slo-queries].
 The queries are similar to the queries used in Kubernetes performance tests[^perftests-queries] for the same purpose [@perftests].
 The `$__range` placeholder is substituted by the corresponding experiment's duration.
+I.e., SLIs are not measured per cluster-day but only over the duration of the load test.
 
 [^perftests-queries]: <https://github.com/kubernetes/perf-tests/blob/release-1.29/clusterloader2/pkg/measurement/common/slos/api_responsiveness_prometheus.go>
 
@@ -118,14 +119,29 @@ queries:
 
 \todo{Update with final configuration}
 
+- ref load dimensions in fundamentals, [@sec:controller-scalability]
+  - show queries for load dimensions
+  - number of objects:
+    - `count(kube_website_info)`?
+  - churn rate of objects:
+    - websites:
+      - `sum(rate(controller_runtime_reconcile_total{job="experiment", controller=~"website-.+", result!="error"}))`
+    - themes:
+      - `sum(rate(controller_runtime_reconcile_total{job="experiment", controller=~"theme-.+", result!="error"})) * count(kube_website_info) / count(kube_theme_info)`
+      - estimate – website reconciliations caused by theme mutations cannot be measured exactly
+      - could be measured by adding `Website.status.observedGenerationTheme` and corresponding metric: `sum(rate(kube_website_observed_generation_status))`
+      - drop `Theme` reconciliations instead?
 - ref SLIs defined in fundamentals, [@sec:controller-scalability]
   - measure over experiment time instead of cluster-day
-  - SLI 1: p99 queue duration < 1s
-    - measurement: `TODO` (workqueue metrics)
-  - SLI 2: p99 website reconciliation latency < 30s
-    - measurement: record time from creation/update to observed watch event of ready status in `experiment`
+  - SLI 1: p99 queue duration <= 1s
+    - `histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="webhosting-operator"}[$__range])) by (name, le))`
+  - SLI 2: p99 website reconciliation latency <= 30s
+    - record time from creation/update to observed watch event of ready status in `experiment`
+    - `histogram_quantile(0.99, sum(rate(experiment_website_reconciliation_duration_seconds_bucket{job="webhosting-operator"}[$__range])) by (name, le))`
+    - hard to include `Theme` triggers, drop `Theme` reconciliations instead?
     - measurement stricter: include controlled objects (e.g., depends on kube-controller-manager: Deployment `Ready` condition)
     - includes sharding assignment latency
+    - experiment is external observer that has the same usual client expectations independent of whether objects are sharded or not
 - explain methodology
   - using multiple resources configurations and finding the maximum load capacity each is difficult and costly
   - adding resources difficult for some resources, e.g., network bandwidth
@@ -134,10 +150,15 @@ queries:
   - higher resource usage means added resources
   - resource usage measurements allow deducing how many resources must be added to the system to sustain the generated load
   - similar to k8s scalability tests
-- measure resource consumption using cadvisor and go runtime metrics
-  - CPU, memory, network traffic
-  - show concrete queries
-  - explain memory metrics/query
+- measure resource consumption of webhosting-operator and sharder using cadvisor and go runtime metrics
+  - CPU: `sum(rate(container_cpu_usage_seconds_total{namespace=~"sharding-system|webhosting-system", container=~"sharder|manager"}[2m])) by (namespace, pod)`
+  - memory: `sum(go_memory_classes_total_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_released_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_unused_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_free_bytes{namespace=~"sharding-system|webhosting-system"}) by (namespace, pod)`
+    - better estimation of actual memory usage than `container_memory_rss`
+    - Go runtime allocates more heap memory than actually needed, might not release garbage collected heap memory to OS immediately
+    - query subtracts all released, unused, and free memory from the total memory held by the process
+  - network traffic
+    - receive: `sum(irate(container_network_receive_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)`
+    - transmit: `sum(irate(container_network_transmit_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)`
 
 ## Experiments
 
