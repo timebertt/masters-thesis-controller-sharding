@@ -59,7 +59,7 @@ For the measurements to be meaningful, the Kubernetes cluster SLOs themselves as
 I.e., it must be ensured that the cluster itself where the controllers are running on is performing well.
 While the latency of API requests (SLI 1 and 2) are relevant for the experiment setup, pod startup latency (SLI 3) is irrelevant as the load tests don't trigger pod startups.
 
-However, in the context of this evaluation, both API request latency SLIs are defined even stricter.
+In the context of this evaluation, both API request latency SLIs are defined even stricter.
 The official SLIs exclude custom resources but they are explicitly included in measurements of this evaluation.
 This is done because the webhosting-operator's main resources are extended resources.
 Furthermore, the latency for mutating API calls is measured including webhook call latency, as the sharder webhook is an integral element of the evaluated sharding design.
@@ -67,8 +67,56 @@ For considering the setup as performing well, the request latency increase cause
 Without taking these aspects into account, the measurements would not be meaningful for the concrete experiment setup.
 Including extended resources and webhook call latency in the SLIs will yield worse performance measurements.
 Hence, the cluster is considered to perform well if the stricter measurements still satisfy the official SLOs.
-\todo[inline]{show concrete queries used for verification}
-<!-- different from https://github.com/kubernetes/perf-tests/blob/master/clusterloader2/pkg/measurement/util/metrics.go#L21 -->
+
+The central store for control plane metrics is consulted for verifying that both SLOs are met using the queries shown in [@lst:k8s-slo-queries].
+The queries are similar to the queries used in Kubernetes performance tests[^perftests-queries] for the same purpose [@perftests].
+The `$__range` placeholder is substituted by the corresponding experiment's duration.
+
+[^perftests-queries]: <https://github.com/kubernetes/perf-tests/blob/release-1.29/clusterloader2/pkg/measurement/common/slos/api_responsiveness_prometheus.go>
+
+```yaml
+queries:
+# SLO 1
+- name: latency-mutating
+  query: |
+    histogram_quantile(0.99,
+      sum by (resource, verb, le) (rate(
+        apiserver_request_duration_seconds_bucket{
+          cluster="shoot--timebertt--sharding",
+          verb!~"GET|LIST|WATCH",
+          subresource!~"log|exec|portforward|attach|proxy"
+        }[$__range]
+      ))
+    ) <= 1
+# SLO 2 - resource scope
+- name: latency-read-resource
+  query: |
+    histogram_quantile(0.99,
+      sum by (resource, scope, le) (rate(
+        apiserver_request_duration_seconds_bucket{
+          cluster="shoot--timebertt--sharding",
+          verb=~"GET|LIST", scope="resource",
+          subresource!~"log|exec|portforward|attach|proxy"
+        }[$__range]
+      ))
+    ) <= 1
+# SLO 2 - namespace and cluster scope
+- name: latency-read-namespace-cluster
+  query: |
+    histogram_quantile(0.99,
+      sum by (resource, scope, le) (rate(
+        apiserver_request_duration_seconds_bucket{
+          cluster="shoot--timebertt--sharding",
+          verb=~"GET|LIST", scope=~"namespace|cluster",
+          subresource!~"log|exec|portforward|attach|proxy"
+        }[$__range]
+      ))
+    ) <= 30
+```
+
+: Queries for verifying control plane SLOs {#lst:k8s-slo-queries}
+
+\todo{Update with final configuration}
 
 - ref SLIs defined in fundamentals, [@sec:controller-scalability]
   - measure over experiment time instead of cluster-day
