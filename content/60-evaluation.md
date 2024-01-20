@@ -122,6 +122,7 @@ Applied to the webhosting-opperator, the number of objects that are watched and 
 This can be measured using the `kube_website_info` metric exposed for every `Website` object by the webhosting exporter [@studyproject].
 On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created and deleted, and the rate at which `Website` reconciliations are triggered.
 In experiments, `Website` reconciliations are triggered by setting the `experiment-reconcile` to the current timestamp.
+\todo{change theme ref instead}
 Also, `Theme` specs are changed to trigger reconciliation of all referencing `Websites`.
 The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
 Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
@@ -155,23 +156,61 @@ queries:
 
 \todo{Update with final configuration}
 
+\todo[inline]{drop Theme mutations}
+
 <!--
 - churn rate of websites caused by theme mutations is an estimate
 - could be measured exactly by adding `Website.status.observedGenerationTheme` and corresponding metric: `sum(rate(kube_website_observed_generation_status))`
-- drop `Theme` reconciliations instead?
+- difficult when Theme ref changes
 -->
 
-- ref SLIs defined in fundamentals, [@sec:controller-scalability]
-  - measure over experiment time instead of cluster-day
-  - SLI 1: p99 queue duration <= 1s
-    - `histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job="webhosting-operator"}[$__range])) by (name, le))`
-  - SLI 2: p99 website reconciliation latency <= 30s
-    - record time from creation/update to observed watch event of ready status in `experiment`
-    - `histogram_quantile(0.99, sum(rate(experiment_website_reconciliation_duration_seconds_bucket{job="webhosting-operator"}[$__range])) by (name, le))`
-    - hard to include `Theme` triggers, drop `Theme` reconciliations instead?
-    - measurement stricter: include controlled objects (e.g., depends on kube-controller-manager: Deployment `Ready` condition)
-    - includes sharding assignment latency
-    - experiment is external observer that has the same usual client expectations independent of whether objects are sharded or not
+To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are measured as well.
+The time that object keys are enqueued for reconciliation (SLI 1) is directly derived from the queue-related metrics exposed by controller-runtime.
+For SLI 2, the time until changes to the desired state of `Websites` are reconciled and ready is measured by the experiment tool.
+The tool acts as a client of the `Website` API, i.e., an observer of the system's user experience.
+For every `Website` creation and specification change, it measures the time it takes for the controller to observe the new generation and for the `Website` to become ready.
+This includes the time until the corresponding watch event is received by the tool, which is important for reflecting the observed user experience.
+For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
+Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
+
+```yaml
+queries:
+- name: latency-queue # SLO 1
+  query: |
+    histogram_quantile(0.99,
+      sum by (name, le) (rate(
+        workqueue_queue_duration_seconds_bucket{
+          job="webhosting-operator",
+        }[$__range]
+      ))
+    ) <= 1
+- name: latency-reconciliation # SLO 2
+  query: |
+    histogram_quantile(0.99,
+      sum by (le) (rate(
+        experiment_website_reconciliation_duration_seconds_bucket{
+          job="experiment"
+        }[$__range]
+      ))
+    ) <= 30
+```
+
+: Queries for verifying controller SLOs {#lst:controller-slo-queries}
+
+\todo{Update with final configuration}
+
+[@Lst:controller-slo-queries] shows the queries used to verify that the described controller SLOs are satisfied.
+Similar to verifying the control plane's SLOs, the measurements are taken over the duration of the load test instead of per cluster-day.
+Note that the measurement for SLI 2 is stricter than the definition in [@sec:controller-scalability].
+Originally, the reconciliation latency SLI excluded reconciliation time of controlled objects, as they are out of scope of the measured controller's responsibility.
+In the load tests however, the reconciliation time of controlled objects – namely, `Deployments` – is short, because no replicas are actually deployed.
+The `Deployment` controller just needs to observe the object and set the `Available` condition to true.
+Hence, the measurement used for verifying SLO 2 includes the reconciliation time `Deployments` of `Websites` for simplicity.
+Furthermore, the user's performance expectations are the same regardless of whether the controller is sharded or not.
+Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller respectively.
+
+\todo{how are SLO verified}
+
 - explain methodology
   - using multiple resources configurations and finding the maximum load capacity each is difficult and costly
   - adding resources difficult for some resources, e.g., network bandwidth
