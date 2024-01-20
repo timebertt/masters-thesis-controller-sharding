@@ -77,8 +77,7 @@ I.e., SLIs are not measured per cluster-day but only over the duration of the lo
 
 ```yaml
 queries:
-# SLO 1
-- name: latency-mutating
+- name: latency-mutating # SLO 1
   query: |
     histogram_quantile(0.99,
       sum by (resource, verb, le) (rate(
@@ -89,8 +88,7 @@ queries:
         }[$__range]
       ))
     ) <= 1
-# SLO 2 - resource scope
-- name: latency-read-resource
+- name: latency-read-resource # SLO 2 - resource scope
   query: |
     histogram_quantile(0.99,
       sum by (resource, scope, le) (rate(
@@ -101,8 +99,7 @@ queries:
         }[$__range]
       ))
     ) <= 1
-# SLO 2 - namespace and cluster scope
-- name: latency-read-namespace-cluster
+- name: latency-read-namespace-cluster # SLO 2 - namespace and cluster scope
   query: |
     histogram_quantile(0.99,
       sum by (resource, scope, le) (rate(
@@ -119,18 +116,51 @@ queries:
 
 \todo{Update with final configuration}
 
-- ref load dimensions in fundamentals, [@sec:controller-scalability]
-  - show queries for load dimensions
-  - number of objects:
-    - `count(kube_website_info)`?
-  - churn rate of objects:
-    - websites:
-      - `sum(rate(controller_runtime_reconcile_total{job="experiment", controller=~"website-.+", result!="error"}))`
-    - themes:
-      - `sum(rate(controller_runtime_reconcile_total{job="experiment", controller=~"theme-.+", result!="error"})) * count(kube_website_info) / count(kube_theme_info)`
-      - estimate – website reconciliations caused by theme mutations cannot be measured exactly
-      - could be measured by adding `Website.status.observedGenerationTheme` and corresponding metric: `sum(rate(kube_website_observed_generation_status))`
-      - drop `Theme` reconciliations instead?
+Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
+For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
+Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
+This can be measured using the `kube_website_info` metric exposed for every `Website` object by the webhosting exporter [@studyproject].
+On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created and deleted, and the rate at which `Website` reconciliations are triggered.
+In experiments, `Website` reconciliations are triggered by setting the `experiment-reconcile` to the current timestamp.
+Also, `Theme` specs are changed to trigger reconciliation of all referencing `Websites`.
+The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
+Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
+[@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
+
+```yaml
+queries:
+- name: website-count # dimension 1
+  query: |
+    count(kube_website_info)
+- name: website-churn # dimension 2
+  query: |
+    # direct website reconciliations
+    sum(rate(
+      controller_runtime_reconcile_total{
+        job="experiment", result!="error",
+        controller=~"website-(generator|deleter|mutator)"
+      }
+    ))
+    +
+    # website reconciliations caused by theme mutations (estimate for average)
+    sum(rate(
+      controller_runtime_reconcile_total{
+        job="experiment", result!="error",
+        controller="theme-mutator"
+      }
+    )) * count(kube_website_info) / count(kube_theme_info)
+```
+
+: Queries for measuring controller load {#lst:load-queries}
+
+\todo{Update with final configuration}
+
+<!--
+- churn rate of websites caused by theme mutations is an estimate
+- could be measured exactly by adding `Website.status.observedGenerationTheme` and corresponding metric: `sum(rate(kube_website_observed_generation_status))`
+- drop `Theme` reconciliations instead?
+-->
+
 - ref SLIs defined in fundamentals, [@sec:controller-scalability]
   - measure over experiment time instead of cluster-day
   - SLI 1: p99 queue duration <= 1s
