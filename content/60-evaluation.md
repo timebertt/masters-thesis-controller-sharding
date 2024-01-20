@@ -209,25 +209,73 @@ Hence, the measurement used for verifying SLO 2 includes the reconciliation time
 Furthermore, the user's performance expectations are the same regardless of whether the controller is sharded or not.
 Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller respectively.
 
-\todo{how are SLO verified}
+\todo[inline]{how are SLOs verified}
 
-- explain methodology
-  - using multiple resources configurations and finding the maximum load capacity each is difficult and costly
-  - adding resources difficult for some resources, e.g., network bandwidth
-  - restraining resources difficult, e.g., memory -> would crash
-- instead, run load tests with varying load, ensure the SLOs are met, and observe the required resource usage
-  - higher resource usage means added resources
-  - resource usage measurements allow deducing how many resources must be added to the system to sustain the generated load
-  - similar to k8s scalability tests
-- measure resource consumption of webhosting-operator and sharder using cadvisor and go runtime metrics
-  - CPU: `sum(rate(container_cpu_usage_seconds_total{namespace=~"sharding-system|webhosting-system", container=~"sharder|manager"}[2m])) by (namespace, pod)`
-  - memory: `sum(go_memory_classes_total_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_released_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_unused_bytes{namespace=~"sharding-system|webhosting-system"} - go_memory_classes_heap_free_bytes{namespace=~"sharding-system|webhosting-system"}) by (namespace, pod)`
-    - better estimation of actual memory usage than `container_memory_rss`
-    - Go runtime allocates more heap memory than actually needed, might not release garbage collected heap memory to OS immediately
-    - query subtracts all released, unused, and free memory from the total memory held by the process
-  - network traffic
-    - receive: `sum(irate(container_network_receive_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)`
-    - transmit: `sum(irate(container_network_transmit_bytes_total{namespace=~"sharding-system|webhosting-system", pod=~"sharder-.+|webhosting-operator-.+"}[2m])) by (namespace, pod)`
+As described in [@sec:kubernetes-scalability], measuring the scalability of a system typically involves determining the maximum load capacity of different resource configurations.
+Similar to measuring the scalability of a Kubernetes cluster itself, following this approach for a controller setup is difficult and costly.
+E.g., this approach requires limiting the amount of compute resources available to a single component.
+When limiting the available amount of memory of a controller, the process is terminated by the kernel when allocating more memory than this amount.
+With this, performance measurements could not be taken anymore and the experiment would simply fail.
+Also, it is not possible to increase a virtual machine's network bandwidth on some cloud infrastructure providers.
+
+For simplicity and better reproducibility of the results, this thesis takes a different approach for evaluating the scalability of controller setups.
+The experiments are executed with varying load but without strict resource limitations for the observed components.
+Provided that the defined SLOs are satisfied, the resource usage of the evaluated components is measured.
+This resource usage allows deducing how much resources must be added to the system for it to sustain the generated amount of load.
+In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load is measured.
+When observing a lower resource usage of one setup in comparison to another setup under the same amount of load, it indicates a higher degree of scalability of the former setup.
+
+[@Lst:resource-usage-queries] shows the queries used for measuring the resource consumption of the sharding components and the webhosting-operator.
+Similar to the experiments in the study project [@studyproject], the CPU and network usage are measured based on the kubelet's cadvisor metrics [@k8sdocs; @prometheusdocs].
+However, the memory usage is determined based on metrics exposed by the Go runtime.
+This gives a better estimation of the actual memory requirements of the controller than the kernel's resident size set (RSS) record of the process, due to how Go facilitates memory management.
+E.g., the Go runtime doesn't immediately release heap memory freed by garbage collection back to the operating system.
+Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
+The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
+
+```yaml
+queries:
+- name: cpu # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (rate(
+      container_cpu_usage_seconds_total{
+        pod=~"sharder-.+|webhosting-operator-.+"
+        container=~"sharder|manager"
+      }[2m]
+    ))
+- name: memory # observed by go runtime
+  query: |
+    sum by (namespace, pod) (
+      go_memory_classes_total_bytes{pod=~"sharder-.+|webhosting-operator-.+"}
+      - go_memory_classes_heap_released_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+      - go_memory_classes_heap_unused_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+      - go_memory_classes_heap_free_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+    )
+- name: network_receive # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (irate(
+      container_network_receive_bytes_total{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }[2m]
+    ))
+- name: network_transmit # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (irate(
+      container_network_transmit_bytes_total{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }[2m]
+    ))
+```
+
+: Queries for measuring controller resource usage {#lst:resource-usage-queries}
+
+\todo{Update with final configuration}
 
 ## Experiments
 
