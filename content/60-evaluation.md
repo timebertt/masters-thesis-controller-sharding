@@ -123,7 +123,6 @@ This can be measured using the `kube_website_info` metric exposed for every `Web
 On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created and deleted, and the rate at which `Website` reconciliations are triggered.
 In experiments, `Website` reconciliations are triggered by setting the `experiment-reconcile` to the current timestamp.
 \todo{change theme ref instead}
-Also, `Theme` specs are changed to trigger reconciliation of all referencing `Websites`.
 The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
 Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
 [@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
@@ -135,34 +134,17 @@ queries:
     count(kube_website_info)
 - name: website-churn # dimension 2
   query: |
-    # direct website reconciliations
     sum(rate(
       controller_runtime_reconcile_total{
         job="experiment", result!="error",
         controller=~"website-(generator|deleter|mutator)"
       }
     ))
-    +
-    # website reconciliations caused by theme mutations (estimate for average)
-    sum(rate(
-      controller_runtime_reconcile_total{
-        job="experiment", result!="error",
-        controller="theme-mutator"
-      }
-    )) * count(kube_website_info) / count(kube_theme_info)
 ```
 
 : Queries for measuring controller load {#lst:load-queries}
 
 \todo{Update with final configuration}
-
-\todo[inline]{drop Theme mutations}
-
-<!--
-- churn rate of websites caused by theme mutations is an estimate
-- could be measured exactly by adding `Website.status.observedGenerationTheme` and corresponding metric: `sum(rate(kube_website_observed_generation_status))`
-- difficult when Theme ref changes
--->
 
 To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are measured as well.
 The time that object keys are enqueued for reconciliation (SLI 1) is directly derived from the queue-related metrics exposed by controller-runtime.
