@@ -40,11 +40,15 @@ With this, the usual reconciliation flow of `Websites` is not changed, as the co
     - requests, limits
     - on which worker pool
     - configuration: concurrent workers
+      - singleton: more workers than shards
   - scale/compute resources of control plane
+  - ensure controllers are not CPU throttled:
+    - assign guaranteed QoS (requests=limits)
   - observe that the system is not limited:
     - etcd: CPU throttling, disk IOPS, WAL sync, DB sync
     - API server: CPU throttling, max inflight requests
     - webhosting-operator: CPU throttling, max active workers, ...
+    - client side rate limits in all involved controllers
   - kube-controller-manager API rate limits
 -->
 
@@ -78,38 +82,38 @@ I.e., SLIs are not measured per cluster-day but only over the duration of the lo
 ```yaml
 queries:
 - name: latency-mutating # SLO 1
+  type: instant
+  slo: 1
   query: |
-    histogram_quantile(0.99,
-      sum by (resource, verb, le) (rate(
-        apiserver_request_duration_seconds_bucket{
-          cluster="shoot--timebertt--sharding",
-          verb!~"GET|LIST|WATCH",
-          subresource!~"log|exec|portforward|attach|proxy"
-        }[$__range]
-      ))
-    ) <= 1
+    histogram_quantile(0.99, sum by (resource, verb, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb!~"GET|LIST|WATCH",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0
 - name: latency-read-resource # SLO 2 - resource scope
+  type: instant
+  slo: 1
   query: |
-    histogram_quantile(0.99,
-      sum by (resource, scope, le) (rate(
-        apiserver_request_duration_seconds_bucket{
-          cluster="shoot--timebertt--sharding",
-          verb=~"GET|LIST", scope="resource",
-          subresource!~"log|exec|portforward|attach|proxy"
-        }[$__range]
-      ))
-    ) <= 1
+    histogram_quantile(0.99, sum by (resource, scope, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb=~"GET|LIST", scope="resource",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0
 - name: latency-read-namespace-cluster # SLO 2 - namespace and cluster scope
+  type: instant
+  slo: 30
   query: |
-    histogram_quantile(0.99,
-      sum by (resource, scope, le) (rate(
-        apiserver_request_duration_seconds_bucket{
-          cluster="shoot--timebertt--sharding",
-          verb=~"GET|LIST", scope=~"namespace|cluster",
-          subresource!~"log|exec|portforward|attach|proxy"
-        }[$__range]
-      ))
-    ) <= 30
+    histogram_quantile(0.99, sum by (resource, scope, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb=~"GET|LIST", scope=~"namespace|cluster",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0
 ```
 
 : Queries for verifying control plane SLOs {#lst:k8s-slo-queries}
@@ -138,8 +142,8 @@ queries:
       controller_runtime_reconcile_total{
         job="experiment", result!="error",
         controller=~"website-(generator|deleter|mutator)"
-      }
-    ))
+      }[1m]
+    )) by (controller)
 ```
 
 : Queries for measuring controller load {#lst:load-queries}
@@ -155,26 +159,31 @@ This includes the time until the corresponding watch event is received by the to
 For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
 Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
 
+\todo[inline]{describe website-tracker}
+
+- website-tracker
+- measure watch latencies in controller and in experiment -> ensure reasonably low, otherwise measurements would be falsified
+
 ```yaml
 queries:
 - name: latency-queue # SLO 1
+  type: instant
+  slo: 1
   query: |
-    histogram_quantile(0.99,
-      sum by (name, le) (rate(
+    histogram_quantile(0.99, sum by (name, le) (rate(
         workqueue_queue_duration_seconds_bucket{
-          job="webhosting-operator",
+          job="webhosting-operator", name="website"
         }[$__range]
-      ))
-    ) <= 1
+    )))
 - name: latency-reconciliation # SLO 2
+  type: instant
+  slo: 5
   query: |
-    histogram_quantile(0.99,
-      sum by (le) (rate(
+    histogram_quantile(0.99, sum by (le) (rate(
         experiment_website_reconciliation_duration_seconds_bucket{
           job="experiment"
         }[$__range]
-      ))
-    ) <= 30
+    )))
 ```
 
 : Queries for verifying controller SLOs {#lst:controller-slo-queries}
@@ -204,7 +213,7 @@ For simplicity and better reproducibility of the results, this thesis takes a di
 The experiments are executed with varying load but without strict resource limitations for the observed components.
 Provided that the defined SLOs are satisfied, the resource usage of the evaluated components is measured.
 This resource usage allows deducing how much resources must be added to the system for it to sustain the generated amount of load.
-In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load is measured.
+In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load are measured.
 When observing a lower resource usage of one setup in comparison to another setup under the same amount of load, it indicates a higher degree of scalability of the former setup.
 
 [@Lst:resource-usage-queries] shows the queries used for measuring the resource consumption of the sharding components and the webhosting-operator.
@@ -215,15 +224,17 @@ E.g., the Go runtime doesn't immediately release heap memory freed by garbage co
 Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
 The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
 
+\todo[inline]{network includes scraping by prometheus and parca!}
+
 ```yaml
 queries:
 - name: cpu # observed by cadvisor
   query: |
     sum by (namespace, pod) (rate(
       container_cpu_usage_seconds_total{
-        pod=~"sharder-.+|webhosting-operator-.+"
+        pod=~"sharder-.+|webhosting-operator-.+",
         container=~"sharder|manager"
-      }[2m]
+      }[1m]
     ))
 - name: memory # observed by go runtime
   query: |
@@ -241,17 +252,17 @@ queries:
     )
 - name: network_receive # observed by cadvisor
   query: |
-    sum by (namespace, pod) (irate(
+    sum by (namespace, pod) (rate(
       container_network_receive_bytes_total{
         pod=~"sharder-.+|webhosting-operator-.+"
-      }[2m]
+      }[1m]
     ))
 - name: network_transmit # observed by cadvisor
   query: |
-    sum by (namespace, pod) (irate(
+    sum by (namespace, pod) (rate(
       container_network_transmit_bytes_total{
         pod=~"sharder-.+|webhosting-operator-.+"
-      }[2m]
+      }[1m]
     ))
 ```
 
@@ -268,6 +279,7 @@ queries:
 - run with singleton, internal sharder, external sharder
 - show distribution of work/resource usage proportional to number of objects
 - show that overhead of sharder doesn't increase with number of objects any more (req. \ref{req:constant})
+- show that all Websites are ready
 
 ### Scale Out
 

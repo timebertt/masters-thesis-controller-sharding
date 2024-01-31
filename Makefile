@@ -5,7 +5,7 @@ PDF := $(BUILDDIR)/paper.pdf
 METADATA := pandoc/metadata.yaml
 
 PLOTS_DIR             := results
-PLOT_CSV_FILES        := $(wildcard $(PLOTS_DIR)/*/*.csv)
+PLOT_CSV_FILES        := $(wildcard $(PLOTS_DIR)/*/*/*.csv)
 PLOT_PY_FILES         := $(wildcard $(PLOTS_DIR)/*/*-plot.py)
 PLOT_COMMON_PY_FILES  := $(wildcard $(PLOTS_DIR)/*.py)
 PLOT_PDF_FILES        := $(patsubst %-plot.py,%.pdf,$(PLOT_PY_FILES))

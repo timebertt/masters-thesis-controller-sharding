@@ -1,0 +1,34 @@
+queries:
+- name: latency-mutating # SLO 1
+  type: instant
+  slo: 1
+  query: |
+    histogram_quantile(0.99, sum by (resource, verb, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb!~"GET|LIST|WATCH",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0
+- name: latency-read-resource # SLO 2 - resource scope
+  type: instant
+  slo: 1
+  query: |
+    histogram_quantile(0.99, sum by (resource, scope, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb=~"GET|LIST", scope="resource",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0
+- name: latency-read-namespace-cluster # SLO 2 - namespace and cluster scope
+  type: instant
+  slo: 30
+  query: |
+    histogram_quantile(0.99, sum by (resource, scope, le) (rate(
+      apiserver_request_duration_seconds_bucket{
+        cluster="shoot--timebertt--sharding",
+        verb=~"GET|LIST", scope=~"namespace|cluster",
+        subresource!~"log|exec|portforward|attach|proxy"
+      }[$__range]
+    ))) > 0

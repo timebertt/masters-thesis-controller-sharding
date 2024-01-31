@@ -2,4 +2,5 @@
 /output-tex
 .idea
 /results/**/*.pdf
+/results/**/*.svg
 __pycache__

@@ -1,0 +1,12 @@
+queries:
+- name: website-count # dimension 1
+  query: |
+    count(kube_website_info)
+- name: website-churn # dimension 2
+  query: |
+    sum(rate(
+      controller_runtime_reconcile_total{
+        job="experiment", result!="error",
+        controller=~"website-(generator|deleter|mutator)"
+      }[1m]
+    )) by (controller)

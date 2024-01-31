@@ -1,0 +1,37 @@
+queries:
+- name: cpu # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (rate(
+      container_cpu_usage_seconds_total{
+        pod=~"sharder-.+|webhosting-operator-.+",
+        container=~"sharder|manager"
+      }[1m]
+    ))
+- name: memory # observed by go runtime
+  query: |
+    sum by (namespace, pod) (
+      go_memory_classes_total_bytes{pod=~"sharder-.+|webhosting-operator-.+"}
+      - go_memory_classes_heap_released_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+      - go_memory_classes_heap_unused_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+      - go_memory_classes_heap_free_bytes{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }
+    )
+- name: network_receive # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (rate(
+      container_network_receive_bytes_total{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }[1m]
+    ))
+- name: network_transmit # observed by cadvisor
+  query: |
+    sum by (namespace, pod) (rate(
+      container_network_transmit_bytes_total{
+        pod=~"sharder-.+|webhosting-operator-.+"
+      }[1m]
+    ))
