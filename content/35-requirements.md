@@ -83,6 +83,8 @@ Otherwise, the sharding components would face the original scalability limitatio
 I.e., the sharding overhead must be almost constant and independent of the number of objects.
 Only if this requirement is fulfilled, adding more controller instances achieves horizontal scalability.
 
+\todo[inline]{number of objects -> controller load (multiple dimensions!)}
+
 \subsection*{\requirement\label{req:ecosystem}Only Use API and Controller Machinery}
 
 The sharding mechanism should not leave the ecosystem of API and controller machinery.

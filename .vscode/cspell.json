@@ -32,6 +32,7 @@
         "kubelet",
         "kubernetes",
         "pandoc",
+        "Parca",
         "rebalancing",
         "resyncs",
         "schedulable",

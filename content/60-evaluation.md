@@ -281,14 +281,45 @@ The query used in this evaluation subtracts all released, unused, and free memor
 
 ## Experiments
 
-### Basic Load
+Based on the described experiments, multiple experiment scenarios are performed.
+The different scenarios and their results are described in the following sections.
+All scenarios are implemented and executed using the experiment tool.
+The first scenario ([@sec:basic]) is the central experiment that compares the different controller setups.
+It evaluates how the setups perform under load and how scalable they are.
+The following are advanced experiments that evaluate the sharding design and implementation presented in this thesis in specific scenarios that are typical for productive controller environment.
 
-- increase load until a pre-defined limit
-- measure resource usage, ensure SLOs are met
-- run with singleton, internal sharder, external sharder
-- show distribution of work/resource usage proportional to number of objects
-- show that overhead of sharder doesn't increase with number of objects any more (req. \ref{req:constant})
-- show that all Websites are ready
+\newpage
+
+### Basic Load {#sec:basic}
+
+In the `basic` scenario, the experiment tool creates, deletes, and updates `Website` objects for 15 minutes.
+For this, it runs 3 controllers:
+
+- The `website-generator` creates 12 random `Websites` per second.
+- The `website-deleter` deletes 2 random `Websites` per second.
+- The `website-mutator` updates the spec of each `Website` every minute.
+
+With this, the generated load is slowly increased over a period of 15 minutes.
+The number of objects (dimension 1) grows to roughly 9,000, while the churn rate grows to roughly 160 changes per second ([@fig:basic-load]).
+
+![Generated load in basic scenario](../results/basic/load.pdf){#fig:basic-load}
+
+The experiment scenario is executed for all three controller setups: the singleton controller, the internal sharder setup, and the external sharder setup.
+For all three setups, measurements are performed as described above and the defined SLOs are verified.
+Additional checks are performed to ensure the system is not limited anywhere and is generally performing well, e.g., that all created `Website` objects eventually get ready.
+If all of these prerequisites are fulfilled, the resulting resource usage of the webhosting-operator and sharder are recorded to deduce how much resources are needed for sustaining the generated load ([@fig:basic-cpu; @fig:basic-memory; @fig:basic-network]).
+
+![CPU usage by pod in basic scenario](../results/basic/cpu.pdf){#fig:basic-cpu}
+
+![Memory usage by pod in basic scenario](../results/basic/memory.pdf){#fig:basic-memory}
+
+![Network usage by pod in basic scenario](../results/basic/network.pdf){#fig:basic-network}
+
+The results show that the resource usage is well distributed across the shards in the external sharder setup.
+Each shard roughly consumes a third of the resources consumed by the singleton controller.
+The results also show that performing sharding for controllers comes with a resource overhead.
+However, the external sharder's overhead is constant and doesn't increase with the controller's load in contrast to the internal sharder's overhead.
+With this, the external sharder setup fulfills req. \ref{req:constant}, while the internal sharder setup does not.
 
 ### Scale Out
 
@@ -320,3 +351,6 @@ The query used in this evaluation subtracts all released, unused, and free memor
 - evaluate coordination on object movements
 
 ## Discussion
+
+- external sharder setup doesn't need much more resources to sustain the same load
+- however, responsibility is distributed -> more instances can be added to increase the load capacity
