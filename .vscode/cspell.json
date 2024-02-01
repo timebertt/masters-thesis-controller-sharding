@@ -27,6 +27,8 @@
         "DHBW",
         "knative",
         "kube",
+        "kube-apiserver",
+        "kube-prometheus",
         "kubelet",
         "kubernetes",
         "pandoc",

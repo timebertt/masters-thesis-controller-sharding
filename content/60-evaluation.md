@@ -24,33 +24,46 @@ Load test experiments are conducted using the experiment tool developed as part 
 It runs different experiment scenarios which continuously create and delete `Website` objects and trigger reconciliations for them.
 With this, it can be used for increasing the scale of the example operator setup according to the described load dimensions.
 During load tests, the webservers configured by `Website` objects are not actually run.
-Running thousands of individual webservers would require an immense amount of compute resources although it is not required the managing controller itself.
-Hence, the website's `Deployment` is configured with `spec.replicas=0`.
+Running thousands of individual webservers would require an immense amount of compute resources although it is not required by the managing controller itself.
+Hence, the website's `Deployments` are configured with `spec.replicas=0`.
 With this, the usual reconciliation flow of `Websites` is not changed, as the controller still waits for the `Available` condition of `Deployments` to be true, but no compute power is required for actually running the webservers.
 
-\todo[inline]{described resources, configuration}
-<!--
-- precisely describe experiment setup
-  - worker pools
-  - sharder:
-    - requests, limits
-    - on which worker pool
-    - configuration: concurrent workers
-  - webhosting-operator
-    - requests, limits
-    - on which worker pool
-    - configuration: concurrent workers
-      - singleton: more workers than shards
-  - scale/compute resources of control plane
-  - ensure controllers are not CPU throttled:
-    - assign guaranteed QoS (requests=limits)
-  - observe that the system is not limited:
-    - etcd: CPU throttling, disk IOPS, WAL sync, DB sync
-    - API server: CPU throttling, max inflight requests
-    - webhosting-operator: CPU throttling, max active workers, ...
-    - client side rate limits in all involved controllers
-  - kube-controller-manager API rate limits
--->
+The experiments are performed on a cluster managed by a custom Gardener [@gardenerdocs] installation on STACKIT [@stackitdocs].
+The evaluation cluster features multiple worker pools as shown in [@tbl:worker-pools] for better isolation of the observed components (`sharding` worker pool), the observing components (`system` worker pool), and the experiment tool generating the load (`experiment` worker pool).
+All worker pools run virtual machines of the `g1a.8d` flavor[^flavors], which has 8 vCPUs and 32 GB memory.
+A flavor without CPU overcommitment is chosen for more stability and better reproducibility of the experiments, because they cannot be affected by steal time [@stackitdocs].
+
+| worker pool | flavor | hosted components | count |
+|-----------------|--------|------------------------------------------|--------|
+| system (default) | g1a.8d | cluster system, monitoring   | 2   |
+| sharding         | g1a.8d | sharder, webhosting-operator | 2–3 |
+| experiment       | g1a.8d | experiment tool              | 1   |
+
+: Worker pools of the evaluation cluster {#tbl:worker-pools}
+
+[^flavors]: <https://docs.stackit.cloud/stackit/en/virtual-machine-flavors-75137231.html>
+
+For Kubernetes clusters managed by Gardener ("shoot" clusters), the control plane components are hosted in another cluster ("seed" cluster) [@gardenerdocs].
+The seed cluster that hosts the control plane components of the evaluation cluster is modified to run machine flavors without CPU overcommitment (`c1a.8d`).
+Additionally, the main control plane components (etcd and kube-apiserver) of the evaluation cluster run on dedicated worker pool using the `s1a.16d` flavor.
+The control plane runs a single etcd instance and 4 kube-apiserver instances.
+To ensure a stable and reproducible evaluation environment, autoscaling of the main control plane components is disabled.
+Instead, etcd and kube-apiserver pods are assigned static resource requests and limits (12 CPUs and 12 GiB memory).
+Requests and limits are set to the same values to guarantee the requested resources [@k8sdocs].
+As the `Deployment` and `ReplicaSet` controllers needs to perform a high rate of reconciliations when generating load for the webhosting-operator, the client-side rate limits of kube-controller-manager are increased to 800 requests per second with bursts of up to 1000 requests per second.
+
+Similar to the control plane components, the observed components (sharder and webhosting-operator) are configured with static and equal resource requests and limits.
+The sharder `Deployment` is configured to run 2 replicas for a high availability of the sharder webhook.
+Both replicas are guaranteed 200m CPUs and 128 MiB memory.
+The active sharder instance runs 5 concurrent workers for the `clusterring`, `shardlease`, and `sharder` controllers respectively.
+Depending on the experiment scenario and controller setup, different numbers of replicas of the webhosting-operator are deployed.
+Each instance is guaranteed 2 CPUs and 1 GiB memory.
+By default the webhosting-operator runs 15 concurrent workers for the `website` controller.
+If the webhosting-operator is deployed as a singleton controller, it runs 50 workers for the `website` controller to allow comparing experiment runs of sharded and non-sharded setups with the same load.
+If the internal sharder is enabled, the leader instance runs 5 workers for the `shardlease` controller, and 10 workers for the `sharder` controllers respectively.
+
+To ensure a clean evaluation environment, the experiment tool restarts all observed components and waits for them to be healthy before starting the load tests.
+For the measurements to be meaningful, all cluster component and all controllers are monitoring during the experiments to ensure that the system is not limited due to CPU throttling, etcd disk performance, server-side or controller-side concurrency limits, or client-side rate limits.
 
 ## Measurements
 
