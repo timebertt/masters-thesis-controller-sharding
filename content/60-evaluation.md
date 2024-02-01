@@ -71,26 +71,12 @@ To determine the controller's performance, several measurements are taken during
 For this, the monitoring setup's Prometheus instance [@prometheusdocs] is used to collect and store metrics from the controller instances themselves, but also from kubelet's cadvisor endpoint [@k8sdocs; @cadvisor] and other exporters like kube-state-metrics [@kubestatemetrics].
 After performing the load tests, the relevant metrics are retrieved from the Prometheus HTTP API using the measure tool [@studyproject] for later analysis and visualization.
 The tool fetches raw time series data and stores the result matrices in CSV-formatted files.
+Additionally, the tool is extended to support instant queries for calculating percentiles over a configured time range.
+This is used to verify that configured SLOs are met during a load test experiment.
 
 For the measurements to be meaningful, the Kubernetes cluster SLOs themselves as described in [@sec:kubernetes-scalability] must be satisfied.
 I.e., it must be ensured that the cluster itself where the controllers are running on is performing well.
 While the latency of API requests (SLI 1 and 2) are relevant for the experiment setup, pod startup latency (SLI 3) is irrelevant as the load tests don't trigger pod startups.
-
-In the context of this evaluation, both API request latency SLIs are defined even stricter.
-The official SLIs exclude custom resources but they are explicitly included in measurements of this evaluation.
-This is done because the webhosting-operator's main resources are extended resources.
-Furthermore, the latency for mutating API calls is measured including webhook call latency, as the sharder webhook is an integral element of the evaluated sharding design.
-For considering the setup as performing well, the request latency increase caused by the sharder webhook should be reasonably low.
-Without taking these aspects into account, the measurements would not be meaningful for the concrete experiment setup.
-Including extended resources and webhook call latency in the SLIs will yield worse performance measurements.
-Hence, the cluster is considered to perform well if the stricter measurements still satisfy the official SLOs.
-
-The central store for control plane metrics is consulted for verifying that both SLOs are met using the queries shown in [@lst:k8s-slo-queries].
-The queries are similar to the queries used in Kubernetes performance tests[^perftests-queries] for the same purpose [@perftests].
-The `$__range` placeholder is substituted by the corresponding experiment's duration.
-I.e., SLIs are not measured per cluster-day but only over the duration of the load test.
-
-[^perftests-queries]: <https://github.com/kubernetes/perf-tests/blob/release-1.29/clusterloader2/pkg/measurement/common/slos/api_responsiveness_prometheus.go>
 
 ```yaml
 queries:
@@ -131,18 +117,21 @@ queries:
 
 : Queries for verifying control plane SLOs {#lst:k8s-slo-queries}
 
-\todo{Update with final configuration}
+In the context of this evaluation, both API request latency SLIs are defined even stricter.
+The official SLIs exclude custom resources but they are explicitly included in measurements of this evaluation.
+This is done because the webhosting-operator's main resources are extended resources.
+Furthermore, the latency for mutating API calls is measured including webhook call latency, as the sharder webhook is an integral element of the evaluated sharding design.
+For considering the setup as performing well, the request latency increase caused by the sharder webhook should be reasonably low.
+Without taking these aspects into account, the measurements would not be meaningful for the concrete experiment setup.
+Including extended resources and webhook call latency in the SLIs will yield worse performance measurements.
+Hence, the cluster is considered to perform well if the stricter measurements still satisfy the official SLOs.
 
-Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
-For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
-Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
-This can be measured using the `kube_website_info` metric exposed for every `Website` object by the webhosting exporter [@studyproject].
-On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created and deleted, and the rate at which `Website` reconciliations are triggered.
-In experiments, `Website` reconciliations are triggered by setting the `experiment-reconcile` to the current timestamp.
-\todo{change theme ref instead}
-The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
-Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
-[@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
+The central store for control plane metrics is consulted for verifying that both SLOs are met using the queries shown in [@lst:k8s-slo-queries].
+The queries are similar to the queries used in Kubernetes performance tests[^perftests-queries] for the same purpose [@perftests].
+The `$__range` placeholder is substituted by the corresponding experiment's duration.
+I.e., SLIs are not measured per cluster-day but only over the duration of the load test.
+
+[^perftests-queries]: <https://github.com/kubernetes/perf-tests/blob/release-1.29/clusterloader2/pkg/measurement/common/slos/api_responsiveness_prometheus.go>
 
 ```yaml
 queries:
@@ -161,21 +150,19 @@ queries:
 
 : Queries for measuring controller load {#lst:load-queries}
 
-\todo{Update with final configuration}
+Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
+For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
+Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
+This can be measured using the `kube_website_info` metric exposed for every `Website` object by the webhosting exporter [@studyproject].
+On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created, updated, and deleted.
+In experiments, `Website` reconciliations are triggered by mutating the `spec.theme` field.
+The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
+Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
+[@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
 
 To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are measured as well.
 The time that object keys are enqueued for reconciliation (SLI 1) is directly derived from the queue-related metrics exposed by controller-runtime.
 For SLI 2, the time until changes to the desired state of `Websites` are reconciled and ready is measured by the experiment tool.
-The tool acts as a client of the `Website` API, i.e., an observer of the system's user experience.
-For every `Website` creation and specification change, it measures the time it takes for the controller to observe the new generation and for the `Website` to become ready.
-This includes the time until the corresponding watch event is received by the tool, which is important for reflecting the observed user experience.
-For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
-Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
-
-\todo[inline]{describe website-tracker}
-
-- website-tracker
-- measure watch latencies in controller and in experiment -> ensure reasonably low, otherwise measurements would be falsified
 
 ```yaml
 queries:
@@ -201,7 +188,18 @@ queries:
 
 : Queries for verifying controller SLOs {#lst:controller-slo-queries}
 
-\todo{Update with final configuration}
+An object's generation is automatically increased by the API server for its creation and for every specification change.
+For all object generations, the tool stores the time when it triggered the change.
+It then waits for a watch event that updates the `status.observedGeneration` field accordingly and for the `status.phase` field to be `Ready`.
+The tool stores the time when the respective watch event was received and asynchronously records the time it took the controller to observe the new generation and for the `Website` to become ready in a histogram metric (`experiment_website_reconciliation_duration_seconds`).
+To verify that the tool's measurements are not falsified by the time it takes to receive the watch event, the `Website` controller records the timestamp when a new generation of a `Website` got ready in the `status.lastTransitionTime` field.
+The tool records the duration between the `lastTransitionTime` and the time when the watch event was received and processed by the event handler in another histogram metric.
+The experiment's measurements are only meaningful if the watch event latency is reasonably low.
+
+In this scenario, the tool acts as a client of the `Website` API, i.e., an observer of the system's user experience.
+As the reconciliation latency observed by the client includes the time until the corresponding watch event is received, it is important to include this time in the measurements for reflecting the actual user experience.
+For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
+Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
 
 [@Lst:controller-slo-queries] shows the queries used to verify that the described controller SLOs are satisfied.
 Similar to verifying the control plane's SLOs, the measurements are taken over the duration of the load test instead of per cluster-day.
@@ -213,31 +211,12 @@ Hence, the measurement used for verifying SLO 2 includes the reconciliation time
 Furthermore, the user's performance expectations are the same regardless of whether the controller is sharded or not.
 Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller respectively.
 
-\todo[inline]{how are SLOs verified}
-
 As described in [@sec:kubernetes-scalability], measuring the scalability of a system typically involves determining the maximum load capacity of different resource configurations.
 Similar to measuring the scalability of a Kubernetes cluster itself, following this approach for a controller setup is difficult and costly.
 E.g., this approach requires limiting the amount of compute resources available to a single component.
 When limiting the available amount of memory of a controller, the process is terminated by the kernel when allocating more memory than this amount.
 With this, performance measurements could not be taken anymore and the experiment would simply fail.
 Also, it is not possible to increase a virtual machine's network bandwidth on some cloud infrastructure providers.
-
-For simplicity and better reproducibility of the results, this thesis takes a different approach for evaluating the scalability of controller setups.
-The experiments are executed with varying load but without strict resource limitations for the observed components.
-Provided that the defined SLOs are satisfied, the resource usage of the evaluated components is measured.
-This resource usage allows deducing how much resources must be added to the system for it to sustain the generated amount of load.
-In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load are measured.
-When observing a lower resource usage of one setup in comparison to another setup under the same amount of load, it indicates a higher degree of scalability of the former setup.
-
-[@Lst:resource-usage-queries] shows the queries used for measuring the resource consumption of the sharding components and the webhosting-operator.
-Similar to the experiments in the study project [@studyproject], the CPU and network usage are measured based on the kubelet's cadvisor metrics [@k8sdocs; @prometheusdocs].
-However, the memory usage is determined based on metrics exposed by the Go runtime.
-This gives a better estimation of the actual memory requirements of the controller than the kernel's resident size set (RSS) record of the process, due to how Go facilitates memory management.
-E.g., the Go runtime doesn't immediately release heap memory freed by garbage collection back to the operating system.
-Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
-The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
-
-\todo[inline]{network includes scraping by prometheus and parca!}
 
 ```yaml
 queries:
@@ -281,7 +260,24 @@ queries:
 
 : Queries for measuring controller resource usage {#lst:resource-usage-queries}
 
-\todo{Update with final configuration}
+For simplicity and better reproducibility of the results, this thesis takes a different approach for evaluating the scalability of controller setups.
+The experiments are executed with varying load but without strict resource limitations for the observed components.
+Provided that the defined SLOs are satisfied, the resource usage of the evaluated components is measured.
+This resource usage allows deducing how much resources must be added to the system for it to sustain the generated amount of load.
+In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load are measured.
+When observing a lower resource usage of one setup in comparison to another setup under the same amount of load, it indicates a higher degree of scalability of the former setup.
+
+[@Lst:resource-usage-queries] shows the queries used for measuring the resource consumption of the sharding components and the webhosting-operator.
+Similar to the experiments in the study project [@studyproject], the CPU and network usage are measured based on the kubelet's cadvisor metrics [@k8sdocs; @prometheusdocs].
+Note that the measured network transfer includes regular scraping operations.
+Prometheus is configured to scrape metrics from sharder and webhosting-operator every 10 seconds.
+Parca is configured to scrape profiling data from sharder and webhosting-operator every 2 seconds.
+
+The memory usage on the other hand is determined based on metrics exposed by the Go runtime.
+This gives a better estimation of the actual memory requirements of the controller than the kernel's resident size set (RSS) record of the process, due to how Go facilitates memory management.
+E.g., the Go runtime doesn't immediately release heap memory freed by garbage collection back to the operating system.
+Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
+The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
 
 ## Experiments
 
