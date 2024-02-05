@@ -141,7 +141,7 @@ I.e., SLIs are not measured per cluster-day but only over the duration of the lo
 queries:
 - name: website-count # dimension 1
   query: |
-    count(kube_website_info)
+    sum(kube_website_info)
 - name: website-churn # dimension 2
   query: |
     sum(rate(
@@ -174,7 +174,7 @@ queries:
   type: instant
   slo: 1
   query: |
-    histogram_quantile(0.99, sum by (name, le) (rate(
+    histogram_quantile(0.99, sum by (le) (rate(
         workqueue_queue_duration_seconds_bucket{
           job="webhosting-operator", name="website"
         }[$__range]

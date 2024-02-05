@@ -7,8 +7,8 @@ set -o nounset
 cd "$(dirname "$0")"
 
 echo "=== external ==="
-start="2024-01-30T14:24:22Z"
-end="2024-01-30T14:39:22Z"
+start="2024-02-05T18:15:52Z"
+end="2024-02-05T18:30:52Z"
 
 (
 set -x;
@@ -19,8 +19,8 @@ measure --start="$start" --end="$end" ./resource-usage.yaml -o ./external --outp
 )
 
 echo "=== internal ==="
-start="2024-01-30T16:50:52Z"
-end="2024-01-30T17:05:52Z"
+start="2024-02-05T18:35:44Z"
+end="2024-02-05T18:50:44Z"
 
 (
 set -x;
@@ -31,8 +31,8 @@ measure --start="$start" --end="$end" ./resource-usage.yaml -o ./internal --outp
 )
 
 echo "=== singleton ==="
-start="2024-01-30T17:37:53Z"
-end="2024-01-30T17:52:53Z"
+start="2024-02-05T18:54:07Z"
+end="2024-02-05T19:09:07Z"
 
 (
 set -x;

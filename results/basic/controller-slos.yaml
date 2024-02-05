@@ -3,7 +3,7 @@ queries:
   type: instant
   slo: 1
   query: |
-    histogram_quantile(0.99, sum by (name, le) (rate(
+    histogram_quantile(0.99, sum by (le) (rate(
         workqueue_queue_duration_seconds_bucket{
           job="webhosting-operator", name="website"
         }[$__range]

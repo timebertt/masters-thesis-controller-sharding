@@ -1,7 +1,7 @@
 queries:
 - name: website-count # dimension 1
   query: |
-    count(kube_website_info)
+    sum(kube_website_info)
 - name: website-churn # dimension 2
   query: |
     sum(rate(
