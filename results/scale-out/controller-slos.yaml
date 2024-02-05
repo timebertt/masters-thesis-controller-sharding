@@ -1,0 +1,15 @@
+queries:
+- name: latency-queue # SLO 1
+  query: |
+    histogram_quantile(0.99, sum by (le) (
+      workqueue_queue_duration_seconds_bucket{
+        job="webhosting-operator", name="website"
+      }
+    ))
+- name: latency-reconciliation # SLO 2
+  query: |
+    histogram_quantile(0.99, sum by (le) (
+      experiment_website_reconciliation_duration_seconds_bucket{
+        job="experiment"
+      }
+    ))

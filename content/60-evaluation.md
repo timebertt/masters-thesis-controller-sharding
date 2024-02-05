@@ -52,6 +52,10 @@ Instead, etcd and kube-apiserver pods are assigned static resource requests and 
 Requests and limits are set to the same values to guarantee the requested resources [@k8sdocs].
 As the `Deployment` and `ReplicaSet` controllers needs to perform a high rate of reconciliations when generating load for the webhosting-operator, the client-side rate limits of kube-controller-manager are increased to 800 requests per second with bursts of up to 1000 requests per second.
 
+\todo{Update values, concurrent workers}
+\todo{automaxprocs}
+\todo{describe experiments dashboard, run-id handling}
+
 Similar to the control plane components, the observed components (sharder and webhosting-operator) are configured with static and equal resource requests and limits.
 The sharder `Deployment` is configured to run 2 replicas for a high availability of the sharder webhook.
 Both replicas are guaranteed 200m CPUs and 128 MiB memory.
@@ -323,13 +327,49 @@ With this, the external sharder setup fulfills req. \ref{req:constant}, while th
 
 ### Scale Out
 
-- show that more replicas bring more performance, allow increasing the load while keeping SLOs (req. \ref{req:scale-out})
+```yaml
+queries:
+- name: latency-queue # SLO 1
+  query: |
+    histogram_quantile(0.99, sum by (le) (
+      workqueue_queue_duration_seconds_bucket{
+        job="webhosting-operator", name="website"
+      }
+    ))
+- name: latency-reconciliation # SLO 2
+  query: |
+    histogram_quantile(0.99, sum by (le) (
+      experiment_website_reconciliation_duration_seconds_bucket{
+        job="experiment"
+      }
+    ))
+```
+
+: Queries for calculating cumulative controller SLOs {#lst:controller-slo-queries-cumulative}
+
+![Generated load in scale out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
+
+![Cumulative controller SLOs per instance count](../results/scale-out/slos.pdf){#fig:scale-out-slos}
+
+![Load capacity increase with added instances](../results/scale-out/capacity.pdf){#fig:scale-out-cpu}
+
+- scenario
+  - similar to basic
+  - no deletions
+  - lower rate of creations -> dimension 1 increasing slower
+  - higher rate of updates -> dimension 2 higher
+- run scenario for external sharder setup with 1, 2, 3, 4, 5 instances each
+- limit instances: 5 concurrent workers (most relevant for latency), ensure enough CPU and memory
+- show distribution of work
+- SLIs are calculated from start of experiment (cumulative percentiles)
+  - is this the right wording?
+  - note: no `rate` function, all observations are used from start of experiment
+  - explain Prometheus histograms -> percentile estimation based on buckets
+  - explain why cumulative SLOs "jump"
+  - buckets are aligned with SLOs -> when estimation is above SLO, actual percentile is also above SLO
+- measure the maximum load under which cumulative SLOs are still satisfied
+- show that more replicas bring more performance (higher maximum load), allow increasing the load while keeping SLOs (req. \ref{req:scale-out})
 - this is what proves that controllers are horizontally scalable now!
-- limit instances: CPU, memory, concurrent workers
-- run basic scenario against external sharder setup with 1, 2, 3 replicas
-- measure the maximum load under which SLOs are still satisfied
-- show that more replicas bring higher maximum load
-- show that overhead of sharding is constant, independent of number of objects (load) (req. \ref{req:constant})
 
 ### Rolling Updates
 
