@@ -25,6 +25,7 @@
         "cadvisor",
         "chaosduck",
         "DHBW",
+        "goroutines",
         "knative",
         "kube",
         "kube-apiserver",

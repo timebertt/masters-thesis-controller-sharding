@@ -12,16 +12,15 @@ The webhosting-operator was developed in the context of the previous study proje
 To evaluate the new external sharder mechanism presented in this thesis, the webhosting-operator is adapted to comply with the contract for `ClusterRings` similar to [@sec:impl-shard].
 With this, the webhosting-operator can be deployed in three different configurations: singleton (sharding disabled), internal sharder (design from study project), external sharder (design from this thesis).
 This allows comparing all three setups using load test experiments.
-\todo{more details?}
 
 As described in [@sec:controller-scalability], the scale of controller setups can be described in two dimensions: the number of API objects and the churn rate of API objects.
 The webhosting-operator's main resource are `Website` objects, which control `Deployment`, `ConfigMap`, `Service`, and `Ingress` objects.
 Accordingly, increasing the load on the webhosting-operator involves creating many `Website` objects and triggering `Website` reconciliations.
 Additionally, changing the `Theme` referenced by a `Website`, also triggers a `Website` reconciliation.
-Hence, the object churn rate of the webhosting-operator can also be increased by mutating the referenced `Themes`.
+Hence, the object churn rate of the webhosting-operator also depends on the churn rate of the referenced `Themes`.
 
-Load test experiments are conducted using the experiment tool developed as part of the study project [@studyproject].
-It runs different experiment scenarios which continuously create and delete `Website` objects and trigger reconciliations for them.
+Load test experiments are conducted using new and refined scenarios for the experiment tool that was developed as part of the study project [@studyproject].
+The experiment scenarios continuously create, update, and delete `Website` objects to trigger reconciliations.
 With this, it can be used for increasing the scale of the example operator setup according to the described load dimensions.
 During load tests, the webservers configured by `Website` objects are not actually run.
 Running thousands of individual webservers would require an immense amount of compute resources although it is not required by the managing controller itself.
@@ -45,26 +44,44 @@ A flavor without CPU overcommitment is chosen for more stability and better repr
 
 For Kubernetes clusters managed by Gardener ("shoot" clusters), the control plane components are hosted in another cluster ("seed" cluster) [@gardenerdocs].
 The seed cluster that hosts the control plane components of the evaluation cluster is modified to run machine flavors without CPU overcommitment (`c1a.8d`).
-Additionally, the main control plane components (etcd and kube-apiserver) of the evaluation cluster run on dedicated worker pool using the `s1a.16d` flavor.
-The control plane runs a single etcd instance and 4 kube-apiserver instances.
+Additionally, the main control plane components (etcd, kube-apiserver, kube-controller-manager) of the evaluation cluster run on dedicated worker pool using the `s1a.16d` flavor.
+The control plane runs a single etcd instance, 4 kube-apiserver instances, and a single kube-controller-manager instance.
 To ensure a stable and reproducible evaluation environment, autoscaling of the main control plane components is disabled.
-Instead, etcd and kube-apiserver pods are assigned static resource requests and limits (12 CPUs and 12 GiB memory).
+Instead, all three components are assigned static resource requests and limits: etcd and kube-apiserver use 12 CPUs and 12 GiB memory, kube-controller-manager uses 6 CPU and 6 GiB memory.
 Requests and limits are set to the same values to guarantee the requested resources [@k8sdocs].
-As the `Deployment` and `ReplicaSet` controllers needs to perform a high rate of reconciliations when generating load for the webhosting-operator, the client-side rate limits of kube-controller-manager are increased to 800 requests per second with bursts of up to 1000 requests per second.
-
-\todo{Update values, concurrent workers}
-\todo{automaxprocs}
-\todo{describe experiments dashboard, run-id handling}
+As the `Deployment` and `ReplicaSet` controllers need to perform a high rate of reconciliations when generating load for the webhosting-operator, the client-side rate limits of kube-controller-manager are increased to 2000 requests per second with bursts of up to 2200 requests per second.
+Both the `Deployment` and `ReplicaSet` controllers are configured to run 50 concurrent workers.
 
 Similar to the control plane components, the observed components (sharder and webhosting-operator) are configured with static and equal resource requests and limits.
-The sharder `Deployment` is configured to run 2 replicas for a high availability of the sharder webhook.
+The sharder `Deployment` is configured to run 2 replicas for a higher availability of the sharder webhook.
 Both replicas are guaranteed 200m CPUs and 128 MiB memory.
 The active sharder instance runs 5 concurrent workers for the `clusterring`, `shardlease`, and `sharder` controllers respectively.
-Depending on the experiment scenario and controller setup, different numbers of replicas of the webhosting-operator are deployed.
+Depending on the experiment scenario and controller setup, different numbers of replicas of the webhosting-operator with different number of concurrent workers are deployed.
 Each instance is guaranteed 2 CPUs and 1 GiB memory.
-By default the webhosting-operator runs 15 concurrent workers for the `website` controller.
-If the webhosting-operator is deployed as a singleton controller, it runs 50 workers for the `website` controller to allow comparing experiment runs of sharded and non-sharded setups with the same load.
-If the internal sharder is enabled, the leader instance runs 5 workers for the `shardlease` controller, and 10 workers for the `sharder` controllers respectively.
+
+In addition to configuring the container resource limits, the Go runtime's `GOMAXPROCS` setting in the control plane components and observed components is configured.
+The `GOMAXPROCS` setting configures how many operating system threads the Go runtime spawns for executing user-level goroutines [@godocs].
+By default, the setting equals the number of logical CPU cores of the machine, which is the total number of CPU cores of the hosting Node in Kubernetes Pods.
+Accordingly, the Go runtime spawns more operating system threads than the number of cores allocated via cgroup limits [@tsoukalos2021mastering].
+Hence, when too many goroutines are busy, the application tries to consume more CPU cycles than the kernel scheduler allows, which results in CPU throttling.
+As the Go scheduler is not aware of the kernel scheduler and vice-versa, the Go scheduler might evict running goroutines after being throttled by the kernel, leading to starvation of individual goroutines.
+This results in high tail latencies for operations handled by goroutines.
+Also, it increases the ratio of CPU cycles consumed by the scheduler to CPU cycles available for goroutines, which in turn decreases the throughput of the application.
+[@holland2023tuning; @automaxprocs]
+
+To prevent these effects from falsifying performance measurements of this evaluation, `GOMAXPROCS` is configured to match the CPU quota allocated for each container of the control plane and observed components.
+For the control plane components, `GOMAXPROCS` is configured via environment variables.
+In the sharder, webhosting-operator, and experiment tool, the automaxprocs library is used to automatically configure the setting based on the container's CPU quota (`max(1, floor(cpuquota))`) [@automaxprocs].
+
+When Kubernetes clients using client-go connect to the API server, they perform a TLS handshake with one of the API server instances.
+Afterward, all requests of the client are sent over the established TLS connection via multiple HTTP2 streams.
+With this, all API requests of a client are sent to a single API server instance[^http2issue].
+In high load situations, clients that perform a high rate of API requests like kube-controller-manager or the experiment tool, can quickly overload the API server instance they connected to.
+To prevent this problem from limiting load tests of this evaluation, all components are configured to disable HTTP2.
+With this, HTTP requests are sent over a pool of multiple layer 4 connections (TLS) instead of a single layer 4 connection with multiple HTTP2 streams.
+This doesn't ensure an equal distribution of load across API server instances, but prevents overloading individual instances during conducted experiments.
+
+[^http2issue]: <https://github.com/gardener/gardener/issues/8810>
 
 To ensure a clean evaluation environment, the experiment tool restarts all observed components and waits for them to be healthy before starting the load tests.
 For the measurements to be meaningful, all cluster component and all controllers are monitoring during the experiments to ensure that the system is not limited due to CPU throttling, etcd disk performance, server-side or controller-side concurrency limits, or client-side rate limits.
