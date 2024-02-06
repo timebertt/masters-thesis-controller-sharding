@@ -335,18 +335,37 @@ The results also show that performing sharding for controllers comes with a reso
 However, the external sharder's overhead is constant and doesn't increase with the controller's load in contrast to the internal sharder's overhead.
 With this, the external sharder setup fulfills req. \ref{req:constant}, while the internal sharder setup does not.
 
-### Scale Out
+### Horizontal Scalability
+
+The second experiment evaluates the horizontal scalability of the external sharder design and implementation.
+As described in [@sec:kubernetes-scalability], measuring the scalability of a system involves determining the maximum load capacity of different resource configurations.
+The system is said to be scalable, if the load capacity can be increased by adding more resources.
+If resources are added in the form of additional instances without adding resources to individual instances, the system is said to be horizontally scalable.
+
+In the `scale-out` scenario, the experiment tool generates load with a high churn rate over 15 minutes.
+It generates a total number of `Websites` similar to the `basic` scenario, but performs a higher rate of `Website` mutations:
+
+- The `website-generator` creates 10 random `Websites` per second.
+- The `website-mutator` updates the spec of each `Website` twice per minute.
+
+With this, the number of objects (dimension 1) grows up to roughly 9,000, and the churn rate grows up to roughly 300 changes per second ([@fig:scale-out-load]).
+
+![Generated load in scale out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
+
+The scenario is executed for the external sharder setup with 1 to 5 webhosting-operator instances, which each run 5 concurrent workers for the `Website` controller.
+To determine the maximum load capacity for which the SLOs are still satisfied, the SLIs are calculated for every 15 seconds instead of once for the entire time window.
+For this, the SLO queries shown in [@lst:controller-slo-queries] are changed to range queries that consider all observations from the start of the experiment (cumulative percentiles) as shown in [@lst:controller-sli-queries-cumulative].
 
 ```yaml
 queries:
-- name: latency-queue # SLO 1
+- name: latency-queue # SLI 1
   query: |
     histogram_quantile(0.99, sum by (le) (
       workqueue_queue_duration_seconds_bucket{
         job="webhosting-operator", name="website"
       }
     ))
-- name: latency-reconciliation # SLO 2
+- name: latency-reconciliation # SLI 2
   query: |
     histogram_quantile(0.99, sum by (le) (
       experiment_website_reconciliation_duration_seconds_bucket{
@@ -355,31 +374,34 @@ queries:
     ))
 ```
 
-: Queries for calculating cumulative controller SLOs {#lst:controller-slo-queries-cumulative}
+: Queries for calculating cumulative controller SLIs {#lst:controller-sli-queries-cumulative}
 
-![Generated load in scale out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
+Usually, the `histogram_quantile` query function is used in combination with a `rate` function applied to number of observations per histogram bucket with upper bounds as specified in the `le` label.
+This calculates a per-second increase of observations per bucket averaged across the range duration.
+For this experiment, no range vector or `rate` function is used, but only the total number of observations.
+This results in a time series that shows the 99th percentile of latency observations from the start of the experiment up until the value's time.
+Note that the calculation using the `histogram_quantile` function is an estimate of the actual quantile based on histogram buckets and linear interpolation.
+This causes the calculated SLIs to quickly grow when more observations start falling into the next higher histogram bucket.
+For example, when buckets with upper bounds of 1 and 10 are used, the estimated 99th percentile quickly grows from less than 1 to less than 10, although the actual percentile might grow slower.
+[@prometheusdocs]
+
+For this evaluation however, the buckets' upper bounds are aligned with the SLOs.
+This means, that for every SLI there is a bucket with the upper bound set to the corresponding SLO.
+As interpolation is only applied between the bucket boundaries, the estimated SLI is guaranteed to grow above the SLO when the actual SLI also grows above the SLO and vice-versa.
+
+After the experiment, the control plane SLOs are verified and the measurements are retrieved from Prometheus.
+For each instance count, the last timestamp where the measured SLIs still satisfied the defined SLOs is determined ([@fig:scale-out-slos]).
+This timestamp is then used to lookup values for both load dimensions.
+The resulting value represents the maximum load capacity of each controller setup ([@fig:scale-out-capacity]).
+Note that the load capacity values cannot be interpreted as absolute values but only in relation to other values of the same load test.
 
 ![Cumulative controller SLOs per instance count](../results/scale-out/slos.pdf){#fig:scale-out-slos}
 
-![Load capacity increase with added instances](../results/scale-out/capacity.pdf){#fig:scale-out-cpu}
+![Load capacity increase with added instances](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
 
-- scenario
-  - similar to basic
-  - no deletions
-  - lower rate of creations -> dimension 1 increasing slower
-  - higher rate of updates -> dimension 2 higher
-- run scenario for external sharder setup with 1, 2, 3, 4, 5 instances each
-- limit instances: 5 concurrent workers (most relevant for latency), ensure enough CPU and memory
-- show distribution of work
-- SLIs are calculated from start of experiment (cumulative percentiles)
-  - is this the right wording?
-  - note: no `rate` function, all observations are used from start of experiment
-  - explain Prometheus histograms -> percentile estimation based on buckets
-  - explain why cumulative SLOs "jump"
-  - buckets are aligned with SLOs -> when estimation is above SLO, actual percentile is also above SLO
-- measure the maximum load under which cumulative SLOs are still satisfied
-- show that more replicas bring more performance (higher maximum load), allow increasing the load while keeping SLOs (req. \ref{req:scale-out})
-- this is what proves that controllers are horizontally scalable now!
+The results show that adding more controller instances bring more performance and increase the maximum load capacity of the system.
+The load capacity grows almost linearly with the number of added instances, so that the setup fulfills req. \ref{req:scale-out}.
+With this, applying the external sharding design makes Kubernetes controller horizontally scalable.
 
 ### Rolling Updates
 

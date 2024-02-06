@@ -9,6 +9,7 @@ PLOT_CSV_FILES        := $(wildcard $(PLOTS_DIR)/*/*/*.csv)
 PLOT_PY_FILES         := $(wildcard $(PLOTS_DIR)/*/*-plot.py)
 PLOT_COMMON_PY_FILES  := $(wildcard $(PLOTS_DIR)/*.py)
 PLOT_PDF_FILES        := $(patsubst %-plot.py,%.pdf,$(PLOT_PY_FILES))
+PLOT_SVG_FILES        := $(patsubst %-plot.py,%.svg,$(PLOT_PY_FILES))
 
 all: html pdf
 
@@ -57,7 +58,7 @@ clean:
 
 .PHONY: clean-plots
 clean-plots:
-	@rm -f $(PLOT_PDF_FILES)
+	@rm -f $(PLOT_PDF_FILES) $(PLOT_SVG_FILES)
 
 .PHONY: install-requirements
 install-requirements:
