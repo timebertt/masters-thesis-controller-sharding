@@ -2,6 +2,10 @@
 
 - clarify relevance, need in community
 - large-scale Kubernetes-based and controller-based deployments
+  - cluster management: Gardener, Cluster-API
+  - infrastructure management: crossplane
+  - OpenStack: yaook
+  - Database operators
 - core Kubernetes components scale well
   - sig-scalability cares about scalability of core components, but core components only [@k8scommunity]
   - scalability thresholds, e.g., 5k nodes [@k8scommunity]

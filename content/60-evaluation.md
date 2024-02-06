@@ -354,12 +354,10 @@ The system is said to be scalable, if the load capacity can be increased by addi
 If resources are added in the form of additional instances without adding resources to individual instances, the system is said to be horizontally scalable.
 
 In the `scale-out` scenario, the experiment tool generates load with a high churn rate over 15 minutes.
-It generates a total number of `Websites` similar to the `basic` scenario, but performs a higher rate of `Website` mutations:
+The number of objects (dimension 1) grows up to roughly 9,000, and the churn rate grows up to roughly 300 changes per second ([@fig:scale-out-load]):
 
 - The `website-generator` creates 10 random `Websites` per second.
 - The `website-mutator` updates the spec of each `Website` twice per minute.
-
-With this, the number of objects (dimension 1) grows up to roughly 9,000, and the churn rate grows up to roughly 300 changes per second ([@fig:scale-out-load]).
 
 ![Generated load in scale out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
 
@@ -393,20 +391,18 @@ For this experiment, no range vector or `rate` function is used, but only the to
 This results in a time series that shows the 99th percentile of latency observations from the start of the experiment up until the value's time.
 Note that the calculation using the `histogram_quantile` function is an estimate of the actual quantile based on histogram buckets and linear interpolation.
 This causes the calculated SLIs to quickly grow when more observations start falling into the next higher histogram bucket.
-For example, when buckets with upper bounds of 1 and 10 are used, the estimated 99th percentile quickly grows from less than 1 to less than 10, although the actual percentile might grow slower.
-[@prometheusdocs]
-
+For example, when buckets with upper bounds of 1 and 10 are used, the estimated 99th percentile quickly grows from less than 1 to less than 10, although the actual percentile might grow slower [@prometheusdocs].
 For this evaluation however, the buckets' upper bounds are aligned with the SLOs.
 This means, that for every SLI there is a bucket with the upper bound set to the corresponding SLO.
 As interpolation is only applied between the bucket boundaries, the estimated SLI is guaranteed to grow above the SLO when the actual SLI also grows above the SLO and vice-versa.
 
+![Cumulative controller SLOs per instance count](../results/scale-out/slis.pdf){#fig:scale-out-slis}
+
 After the experiment, the control plane SLOs are verified and the measurements are retrieved from Prometheus.
-For each instance count, the last timestamp where the measured SLIs still satisfied the defined SLOs is determined ([@fig:scale-out-slos]).
+For each instance count, the last timestamp where the measured SLIs still satisfied the defined SLOs is determined ([@fig:scale-out-slis]).
 This timestamp is then used to lookup values for both load dimensions.
 The resulting value represents the maximum load capacity of each controller setup ([@fig:scale-out-capacity]).
 Note that the load capacity values cannot be interpreted as absolute values but only in relation to other values of the same load test.
-
-![Cumulative controller SLOs per instance count](../results/scale-out/slos.pdf){#fig:scale-out-slos}
 
 ![Load capacity increase with added instances](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
 
@@ -422,7 +418,7 @@ With this, applying the external sharding design makes Kubernetes controller hor
 
 ### Chaos Testing
 
-- randomly kill instances/leader
+- randomly kill instances
 - similar to [knative chaosduck](https://github.com/knative/pkg/blob/main/leaderelection/chaosduck/main.go#L17)
 - show that SLOs are still met
 
@@ -437,3 +433,4 @@ With this, applying the external sharding design makes Kubernetes controller hor
 
 - external sharder setup doesn't need much more resources to sustain the same load
 - however, responsibility is distributed -> more instances can be added to increase the load capacity
+- proven that controllers are horizontal scalable now!

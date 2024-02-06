@@ -25,12 +25,11 @@ for i in replicas:
     maxCount.insert(i-1, dataCount.loc[maxTimestamp].value)
     maxChurn.insert(i-1, dataChurn.loc[maxTimestamp])
 
-plt.figure(figsize=(15, 4))
-
-fig, ax1 = plt.subplots()
+fig, ax1 = plt.subplots(figsize=(8, 5))
 lineCount, = ax1.plot(replicas, maxCount, label='count capacity', color='blue', marker='o', linestyle='--')
 ax1.set_xlabel('Instances')
 ax1.set_xticks(replicas)
+ax1.grid(True)
 ax1.set_ylabel('count')
 ax1.tick_params(axis='y', labelcolor='blue')
 
