@@ -174,7 +174,7 @@ queries:
 Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
 For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
 Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
-This can be measured using the `kube_website_info` metric exposed for every `Website` object by the webhosting exporter [@studyproject].
+This can be measured using the `kube_website_info` metric exposed for every `Website` object by the operator.
 On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created, updated, and deleted.
 In experiments, `Website` reconciliations are triggered by mutating the `spec.theme` field.
 The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
@@ -232,13 +232,6 @@ Hence, the measurement used for verifying SLO 2 includes the reconciliation time
 Furthermore, the user's performance expectations are the same regardless of whether the controller is sharded or not.
 Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller respectively.
 
-As described in [@sec:kubernetes-scalability], measuring the scalability of a system typically involves determining the maximum load capacity of different resource configurations.
-Similar to measuring the scalability of a Kubernetes cluster itself, following this approach for a controller setup is difficult and costly.
-E.g., this approach requires limiting the amount of compute resources available to a single component.
-When limiting the available amount of memory of a controller, the process is terminated by the kernel when allocating more memory than this amount.
-With this, performance measurements could not be taken anymore and the experiment would simply fail.
-Also, it is not possible to increase a virtual machine's network bandwidth on some cloud infrastructure providers.
-
 ```yaml
 queries:
 - name: cpu # observed by cadvisor
@@ -281,14 +274,7 @@ queries:
 
 : Queries for measuring controller resource usage {#lst:resource-usage-queries}
 
-For simplicity and better reproducibility of the results, this thesis takes a different approach for evaluating the scalability of controller setups.
-The experiments are executed with varying load but without strict resource limitations for the observed components.
-Provided that the defined SLOs are satisfied, the resource usage of the evaluated components is measured.
-This resource usage allows deducing how much resources must be added to the system for it to sustain the generated amount of load.
-In other words, instead of determining the load capacity of different resource configurations, the resources needed for a varying amount of load are measured.
-When observing a lower resource usage of one setup in comparison to another setup under the same amount of load, it indicates a higher degree of scalability of the former setup.
-
-[@Lst:resource-usage-queries] shows the queries used for measuring the resource consumption of the sharding components and the webhosting-operator.
+In addition to measuring load and performance of the controllers, the resource consumption of the sharding components and the webhosting-operator are recorded as shown in [@lst:resource-usage-queries].
 Similar to the experiments in the study project [@studyproject], the CPU and network usage are measured based on the kubelet's cadvisor metrics [@k8sdocs; @prometheusdocs].
 Note that the measured network transfer includes regular scraping operations.
 Prometheus is configured to scrape metrics from sharder and webhosting-operator every 10 seconds.
@@ -300,18 +286,21 @@ E.g., the Go runtime doesn't immediately release heap memory freed by garbage co
 Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
 The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
 
+\todo[inline]{describe experiments dashboard, run-id handling}
+
 ## Experiments
 
-Based on the described experiments, multiple experiment scenarios are performed.
-The different scenarios and their results are described in the following sections.
+Based on the described experiment setup, multiple experiment are performed.
+The different scenarios, their goals, and their results are described in the following sections.
 All scenarios are implemented and executed using the experiment tool.
-The first scenario ([@sec:basic]) is the central experiment that compares the different controller setups.
-It evaluates how the setups perform under load and how scalable they are.
-The following are advanced experiments that evaluate the sharding design and implementation presented in this thesis in specific scenarios that are typical for productive controller environment.
 
-\newpage
+### Comparison
 
-### Basic Load {#sec:basic}
+The first experiment scenario generates a basic amount of load to compare the different controller setups.
+It evaluates how the setups perform under load, ensures that the defined SLOs are satisfied, and measures the components' resource consumption.
+The resource usage allows deducing how many resources must be added to the system for it to sustain the generated amount of load.
+In other words, this scenario doesn't determine the load capacity of different setups and resource configurations, but instead determines how many resources are needed for the generated amount of load.
+Most importantly, it observes how load and resource consumption are distributed across multiple instances.
 
 In the `basic` scenario, the experiment tool creates, deletes, and updates `Website` objects for 15 minutes.
 For this, it runs 3 controllers:
@@ -329,6 +318,10 @@ The experiment scenario is executed for all three controller setups: the singlet
 For all three setups, measurements are performed as described above and the defined SLOs are verified.
 Additional checks are performed to ensure the system is not limited anywhere and is generally performing well, e.g., that all created `Website` objects eventually get ready.
 If all of these prerequisites are fulfilled, the resulting resource usage of the webhosting-operator and sharder are recorded to deduce how much resources are needed for sustaining the generated load ([@fig:basic-cpu; @fig:basic-memory; @fig:basic-network]).
+
+By default the webhosting-operator runs 15 concurrent workers for the `website` controller.
+If the webhosting-operator is deployed as a singleton controller, it runs 50 workers for the `website` controller to allow comparing experiment runs of sharded and non-sharded setups with the same load.
+If the internal sharder is enabled, the leader instance runs 5 workers for the `shardlease` controller, and 10 workers for the `sharder` controllers respectively.
 
 ![CPU usage by pod in basic scenario](../results/basic/cpu.pdf){#fig:basic-cpu}
 
