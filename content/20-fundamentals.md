@@ -385,6 +385,7 @@ Also, a failure or performance degradation in a single controller instance alway
 Additionally, scaling up controllers vertically might not work without downtime in all cases, e.g., when migration to a bigger machine size is required.
 Lastly, depending on the control plane networking setup, running a single controller instance with HTTP2 enabled might result in loading a single API server instance only as all API requests are multiplexed over a single TLS connection.
 
+<!--
 ## Sharding
 
 - essential components?
@@ -392,3 +393,4 @@ Lastly, depending on the control plane networking setup, running a single contro
   - ref Slicer [@slicer16]
   - ref study project, chapter 2.7 [@studyproject]
 - why sharding enables horizontal scalability
+-->

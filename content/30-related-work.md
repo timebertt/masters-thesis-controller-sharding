@@ -158,9 +158,9 @@ See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sha
 - static shard names?
 -->
 
+<!--
 ## Sharding on Workload Level?
 
-<!--
 - ingress controller sharding by route: <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
 - machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
 

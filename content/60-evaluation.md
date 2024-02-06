@@ -305,7 +305,7 @@ Based on the described experiment setup, multiple experiment are performed.
 The different scenarios, their goals, and their results are described in the following sections.
 All scenarios are implemented and executed using the experiment tool.
 
-### Comparison
+### Comparison {#sec:eval-comparison}
 
 The first experiment scenario generates a basic amount of load to compare the different controller setups.
 It evaluates how the setups perform under load, ensures that the defined SLOs are satisfied, and measures the components' resource consumption.
@@ -346,7 +346,7 @@ The results also show that performing sharding for controllers comes with a reso
 However, the external sharder's overhead is constant and doesn't increase with the controller's load in contrast to the internal sharder's overhead.
 With this, the external sharder setup fulfills req. \ref{req:constant}, while the internal sharder setup does not.
 
-### Horizontal Scalability
+### Horizontal Scalability {#sec:eval-scale-out}
 
 The second experiment evaluates the horizontal scalability of the external sharder design and implementation.
 As described in [@sec:kubernetes-scalability], measuring the scalability of a system involves determining the maximum load capacity of different resource configurations.
@@ -410,6 +410,7 @@ The results show that adding more controller instances bring more performance an
 The load capacity grows almost linearly with the number of added instances, so that the setup fulfills req. \ref{req:scale-out}.
 With this, applying the external sharding design makes Kubernetes controller horizontally scalable.
 
+<!--
 ### Rolling Updates
 
 - rolling updates of controller
@@ -428,9 +429,13 @@ With this, applying the external sharding design makes Kubernetes controller hor
 - horizontal autoscaling of controller according to load
   - HPA on queue duration (SLI 1)
 - evaluate coordination on object movements
+-->
 
 ## Discussion
 
-- external sharder setup doesn't need much more resources to sustain the same load
-- however, responsibility is distributed -> more instances can be added to increase the load capacity
-- proven that controllers are horizontal scalable now!
+- work is well distributed across instances
+- req. \ref{req:constant} Constant Overhead
+  - external sharder setup doesn't need much more resources to sustain the same load
+  - however, responsibility is distributed -> more instances can be added to increase the load capacity
+- req. \ref{req:scale-out} Incremental Scale-Out
+  - proven that controllers are horizontal scalable now!
