@@ -17,10 +17,10 @@ for i in replicas:
     dataCount = convert_ts_index(read_data_raw(dir+'/controller-load-website-count.csv').set_index('ts'))
     dataChurn = convert_ts_index(read_data_raw(dir+'/controller-load-website-churn.csv').pivot(index='ts', columns=['controller'], values='value')).sum(axis=1)
 
-    # calculate max time when cumulative SLOs where still satisfied
+    # calculate max time when cumulative SLIs are still below SLOs
     maxTimestamp = min(
-        (convert_ts_index(read_data_raw(dir+'/controller-slos-latency-queue.csv').set_index('ts'))['value'] <= 1)[::-1].idxmax(),
-        (convert_ts_index(read_data_raw(dir+'/controller-slos-latency-reconciliation.csv').set_index('ts'))['value'] <= 5)[::-1].idxmax(),
+        (convert_ts_index(read_data_raw(dir+'/controller-slis-latency-queue.csv').set_index('ts'))['value'] <= 1)[::-1].idxmax(),
+        (convert_ts_index(read_data_raw(dir+'/controller-slis-latency-reconciliation.csv').set_index('ts'))['value'] <= 5)[::-1].idxmax(),
     )
     maxCount.insert(i-1, dataCount.loc[maxTimestamp].value)
     maxChurn.insert(i-1, dataChurn.loc[maxTimestamp])

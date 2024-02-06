@@ -14,7 +14,7 @@ end="2024-02-05T15:21:55Z"
 set -x;
 measure --start="$start" --end="$end" ./apiserver-slos.yaml -o ./scale-5 --output-prefix apiserver-slo- --prometheus-url http://localhost:8080/api/prom;
 measure --start="$start" --end="$end" ./controller-load.yaml -o ./scale-5 --output-prefix controller-load-;
-measure --start="$start" --end="$end" ./controller-slos.yaml -o ./scale-5 --output-prefix controller-slos-;
+measure --start="$start" --end="$end" ./controller-slis.yaml -o ./scale-5 --output-prefix controller-slis-;
 measure --start="$start" --end="$end" ./resource-usage.yaml -o ./scale-5 --output-prefix resource-usage-;
 )
 
@@ -26,7 +26,7 @@ end="2024-02-05T16:02:12Z"
 set -x;
 measure --start="$start" --end="$end" ./apiserver-slos.yaml -o ./scale-4 --output-prefix apiserver-slo- --prometheus-url http://localhost:8080/api/prom;
 measure --start="$start" --end="$end" ./controller-load.yaml -o ./scale-4 --output-prefix controller-load-;
-measure --start="$start" --end="$end" ./controller-slos.yaml -o ./scale-4 --output-prefix controller-slos-;
+measure --start="$start" --end="$end" ./controller-slis.yaml -o ./scale-4 --output-prefix controller-slis-;
 measure --start="$start" --end="$end" ./resource-usage.yaml -o ./scale-4 --output-prefix resource-usage-;
 )
 
@@ -38,7 +38,7 @@ end="2024-02-05T14:50:53Z"
 set -x;
 measure --start="$start" --end="$end" ./apiserver-slos.yaml -o ./scale-3 --output-prefix apiserver-slo- --prometheus-url http://localhost:8080/api/prom;
 measure --start="$start" --end="$end" ./controller-load.yaml -o ./scale-3 --output-prefix controller-load-;
-measure --start="$start" --end="$end" ./controller-slos.yaml -o ./scale-3 --output-prefix controller-slos-;
+measure --start="$start" --end="$end" ./controller-slis.yaml -o ./scale-3 --output-prefix controller-slis-;
 measure --start="$start" --end="$end" ./resource-usage.yaml -o ./scale-3 --output-prefix resource-usage-;
 )
 
@@ -50,7 +50,7 @@ end="2024-02-05T16:22:21Z"
 set -x;
 measure --start="$start" --end="$end" ./apiserver-slos.yaml -o ./scale-2 --output-prefix apiserver-slo- --prometheus-url http://localhost:8080/api/prom;
 measure --start="$start" --end="$end" ./controller-load.yaml -o ./scale-2 --output-prefix controller-load-;
-measure --start="$start" --end="$end" ./controller-slos.yaml -o ./scale-2 --output-prefix controller-slos-;
+measure --start="$start" --end="$end" ./controller-slis.yaml -o ./scale-2 --output-prefix controller-slis-;
 measure --start="$start" --end="$end" ./resource-usage.yaml -o ./scale-2 --output-prefix resource-usage-;
 )
 
@@ -62,6 +62,6 @@ end="2024-02-05T15:42:03Z"
 set -x;
 measure --start="$start" --end="$end" ./apiserver-slos.yaml -o ./scale-1 --output-prefix apiserver-slo- --prometheus-url http://localhost:8080/api/prom;
 measure --start="$start" --end="$end" ./controller-load.yaml -o ./scale-1 --output-prefix controller-load-;
-measure --start="$start" --end="$end" ./controller-slos.yaml -o ./scale-1 --output-prefix controller-slos-;
+measure --start="$start" --end="$end" ./controller-slis.yaml -o ./scale-1 --output-prefix controller-slis-;
 measure --start="$start" --end="$end" ./resource-usage.yaml -o ./scale-1 --output-prefix resource-usage-;
 )

@@ -14,14 +14,13 @@ reconcileData = []
 for i in replicas:
     dir = f'scale-{i}'
 
-    queueData.insert(i, convert_ts_index(read_data_raw(dir+'/controller-slos-latency-queue.csv').set_index('ts')).rename(columns={'value': f'{i} instances'}))
-    reconcileData.insert(i, convert_ts_index(read_data_raw(dir+'/controller-slos-latency-reconciliation.csv').set_index('ts')).rename(columns={'value': f'{i} instances'}))
+    queueData.insert(i, convert_ts_index(read_data_raw(dir+'/controller-slis-latency-queue.csv').set_index('ts')).rename(columns={'value': f'{i} instances'}))
+    reconcileData.insert(i, convert_ts_index(read_data_raw(dir+'/controller-slis-latency-reconciliation.csv').set_index('ts')).rename(columns={'value': f'{i} instances'}))
 
 plt.figure(figsize=(15, 6))
 
 ax1 = plt.subplot(121)
 data = pd.concat(queueData, axis=1)
-print(data)
 data.plot(
     title='Queue latency (P99)',
     legend=True,
@@ -37,7 +36,6 @@ ax1.plot([0, data.index.max()], [1, 1], 'k--')
 
 ax2 = plt.subplot(122, sharex=ax1)
 data = pd.concat(reconcileData, axis=1)
-print(data)
 data.plot(
     title='Reconciliation latency (P99)',
     legend=True,
