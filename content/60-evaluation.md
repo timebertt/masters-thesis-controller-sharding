@@ -154,6 +154,16 @@ I.e., SLIs are not measured per cluster-day but only over the duration of the lo
 
 [^perftests-queries]: <https://github.com/kubernetes/perf-tests/blob/release-1.29/clusterloader2/pkg/measurement/common/slos/api_responsiveness_prometheus.go>
 
+Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
+For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
+Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
+This can be measured using the `kube_website_info` metric exposed for every `Website` object by the operator.
+On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created, updated, and deleted.
+In experiments, `Website` reconciliations are triggered by mutating the `spec.theme` field.
+The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
+Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
+[@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
+
 ```yaml
 queries:
 - name: website-count # dimension 1
@@ -171,19 +181,22 @@ queries:
 
 : Queries for measuring controller load {#lst:load-queries}
 
-Next, the load on the evaluated controller setup needs to be recorded during experiments to determine the load capacity of a setup using a given resource configuration and to allow comparing results of different scenarios.
-For this, both load dimensions of controllers defined in [@sec:controller-scalability] need to be measured for the tested controller.
-Applied to the webhosting-opperator, the number of objects that are watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
-This can be measured using the `kube_website_info` metric exposed for every `Website` object by the operator.
-On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which `Website` objects are created, updated, and deleted.
-In experiments, `Website` reconciliations are triggered by mutating the `spec.theme` field.
-The experiment tool is based on controller-runtime and individual actions in scenarios are performed by reconciliations of different controllers.
-Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
-[@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
-
 To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are measured as well.
 The time that object keys are enqueued for reconciliation (SLI 1) is directly derived from the queue-related metrics exposed by controller-runtime.
 For SLI 2, the time until changes to the desired state of `Websites` are reconciled and ready is measured by the experiment tool.
+
+An object's generation is automatically increased by the API server for its creation and for every specification change.
+For all object generations, the tool stores the time when it triggered the change.
+It then waits for a watch event that updates the `status.observedGeneration` field accordingly and for the `status.phase` field to be `Ready`.
+The tool stores the time when the respective watch event was received and asynchronously records the time it took the controller to observe the new generation and for the `Website` to become ready in a histogram metric (`experiment_website_reconciliation_duration_seconds`).
+To verify that the tool's measurements are not falsified by the time it takes to receive the watch event, the `Website` controller records the timestamp when a new generation of a `Website` got ready in the `status.lastTransitionTime` field.
+The tool records the duration between the `lastTransitionTime` and the time when the watch event was received and processed by the event handler in another histogram metric.
+The experiment's measurements are only meaningful if the watch event latency is reasonably low.
+
+In this scenario, the tool acts as a client of the `Website` API, i.e., an observer of the system's user experience.
+As the reconciliation latency observed by the client includes the time until the corresponding watch event is received, it is important to include this time in the measurements for reflecting the actual user experience.
+For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
+Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
 
 ```yaml
 queries:
@@ -208,19 +221,6 @@ queries:
 ```
 
 : Queries for verifying controller SLOs {#lst:controller-slo-queries}
-
-An object's generation is automatically increased by the API server for its creation and for every specification change.
-For all object generations, the tool stores the time when it triggered the change.
-It then waits for a watch event that updates the `status.observedGeneration` field accordingly and for the `status.phase` field to be `Ready`.
-The tool stores the time when the respective watch event was received and asynchronously records the time it took the controller to observe the new generation and for the `Website` to become ready in a histogram metric (`experiment_website_reconciliation_duration_seconds`).
-To verify that the tool's measurements are not falsified by the time it takes to receive the watch event, the `Website` controller records the timestamp when a new generation of a `Website` got ready in the `status.lastTransitionTime` field.
-The tool records the duration between the `lastTransitionTime` and the time when the watch event was received and processed by the event handler in another histogram metric.
-The experiment's measurements are only meaningful if the watch event latency is reasonably low.
-
-In this scenario, the tool acts as a client of the `Website` API, i.e., an observer of the system's user experience.
-As the reconciliation latency observed by the client includes the time until the corresponding watch event is received, it is important to include this time in the measurements for reflecting the actual user experience.
-For secondary reconciliation triggers, e.g., changing the referenced `Theme`, its difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
-Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
 
 [@Lst:controller-slo-queries] shows the queries used to verify that the described controller SLOs are satisfied.
 Similar to verifying the control plane's SLOs, the measurements are taken over the duration of the load test instead of per cluster-day.
