@@ -286,7 +286,18 @@ E.g., the Go runtime doesn't immediately release heap memory freed by garbage co
 Hence, the process can hold more memory of the system than actually needed by the program, also due to the runtime's batch-based memory allocation.
 The query used in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
 
-\todo[inline]{describe experiments dashboard, run-id handling}
+To distinguish between individual experiment runs, a unique ID is attached to every run and added as the `run_id` label to the corresponding metrics.
+The experiment tool is deployed as a Kubernetes `Job` and the UID of the executing `Pod` is used as the run's ID.
+Before starting the actual load test, the experiment tool injects the run ID as a label into the sharder and webhosting-operator `Deployment`.
+Additionally, Prometheus is configured to copy the `run_id` label from the `Pods` to the scraped metrics.
+With this, all metrics from individual runs can be queried separately and selected by run ID.
+
+A dashboard is added to the monitoring setup's Grafana instance, that visualizes the most important measurements of experiments.
+Most importantly, it shows the generated load in both dimensions and the resulting SLIs ([@fig:dashboard-experiments]).
+The visualized SLIs are calculated as rolling percentiles, e.g. over 1 minute.
+Additionally, the CPU, memory, and network usage of sharder and webhosting-operator are displayed per pod.
+
+![Experiments Grafana dashboard](../assets/dashboard-experiments.png){#fig:dashboard-experiments}
 
 ## Experiments
 
