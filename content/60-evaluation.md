@@ -433,9 +433,16 @@ With this, applying the external sharding design makes Kubernetes controller hor
 
 ## Discussion
 
-- work is well distributed across instances
-- req. \ref{req:constant} Constant Overhead
-  - external sharder setup doesn't need much more resources to sustain the same load
-  - however, responsibility is distributed -> more instances can be added to increase the load capacity
-- req. \ref{req:scale-out} Incremental Scale-Out
-  - proven that controllers are horizontal scalable now!
+The performed evaluation shows that presented design and implementation makes Kubernetes controllers horizontally scalable.
+The experiments demonstrate that the sharding mechanism distributes object responsibility and reconciliation work well across multiple controller instances.
+Each of the $n$ shards is responsible for roughly $1/n$ objects and roughly requires $1/n$ resources of the traditional singleton controller setup.
+
+Although, the sharding mechanism incurs an overhead in resource consumption, the overhead is minimal and negligible at scale.
+Most importantly, the sharder's resource footprint is constant even when the controller's load increases, i.e., when it has to handle more objects or a higher object churn rate.
+In total, the external sharder setup only requires little more resources than the singleton controller setup to sustain the same load.
+With this, the evaluation has shown that the presented design and implementation fulfills req. \ref{req:constant}.
+
+Furthermore, the evaluation shows that the external sharder design provides incremental scale-out properties and fulfills req. \ref{req:scale-out}.
+The load capacity of the controller system can be incrementally increased by adding more instances.
+With the presented design, the load capacity increases almost linearly with the number of added controller instances.
+This proves that the architecture is horizontally scalable as defined in [@bondi2000characteristics; @duboc2007framework] ([@sec:kubernetes-scalability]).

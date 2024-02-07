@@ -3,6 +3,7 @@
 Conclusion:
 
 - go over requirements: all requirements fulfilled
+- restriction of having a single active controller (leader election) is removed
 - design makes Kubernetes controllers horizontally scalable
 - req. \ref{req:membership} Membership and Failure Detection
   - suitable for dynamic environments

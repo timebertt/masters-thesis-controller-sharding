@@ -78,12 +78,10 @@ The necessary logic that needs to be reimplemented in the controllers themselves
 \subsection*{\requirement\label{req:constant}Constant Overhead}
 
 A sharding mechanism always incurs a certain overhead for management, coordination, etc. in comparison to a non-distributed setup.
-However, the inherent overhead of the sharding mechanism must not increase proportionally with the number of sharded objects.
+However, the inherent overhead of the sharding mechanism must not increase proportionally with the controller's load.
 Otherwise, the sharding components would face the original scalability limitations themselves ([@sec:related-study-project]).
-I.e., the sharding overhead must be almost constant and independent of the number of objects.
+I.e., the sharding overhead must be almost constant and independent of the number of objects and the object churn rate.
 Only if this requirement is fulfilled, adding more controller instances achieves horizontal scalability.
-
-\todo[inline]{number of objects -> controller load (multiple dimensions!)}
 
 \subsection*{\requirement\label{req:ecosystem}Only Use API and Controller Machinery}
 
