@@ -82,7 +82,7 @@ The `status.shards` field describes how many shard leases with a matching `clust
 Additionally, the `status.availableShards` field depicts how many of these shards are healthy and available for assignments.
 Also, the `Ready` reflects whether the sharding mechanism configured by the `ClusterRing` has been successfully reconciled.
 
-## Sharder Components
+## Sharder Components {#sec:impl-sharder}
 
 The sharder runs several components including controllers and webhooks that facilitate the core logic of the sharding mechanism.
 

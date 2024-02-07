@@ -53,6 +53,36 @@ Furthermore, sharding mechanisms are considered for achieving a higher scalabili
 The problem is that there is no common design or implementation that can be applied to arbitrary controllers for scaling them horizontally.
 There is no reusable implementation that the entire controller ecosystem can benefit from.
 
-[^sharding-issues]: <https://github.com/istio/istio/issues/22208>, <https://github.com/vmware-tanzu/velero/issues/487>, <https://github.com/kubernetes-sigs/controller-runtime/issues/2576>, <https://github.com/operator-framework/operator-sdk/issues/1540>, <https://github.com/GoogleCloudPlatform/metacontroller/issues/190>
+[^sharding-issues]: Istio: <https://github.com/istio/istio/issues/22208>, \newline
+Velero: <https://github.com/vmware-tanzu/velero/issues/487>, \newline
+controller-runtime: <https://github.com/kubernetes-sigs/controller-runtime/issues/2576>, \newline
+Operator SDK: <https://github.com/operator-framework/operator-sdk/issues/1540>, \newline
+Metacontroller: <https://github.com/GoogleCloudPlatform/metacontroller/issues/190>
 
-This thesis builds on a previous study project [@studyproject] and presents a reusable design and implementation for making Kubernetes controllers horizontally scalable.
+This thesis builds on a previous study project [@studyproject] and presents a design and implementation for making Kubernetes controllers horizontally scalable.
+The design applies proven mechanisms from the field of distributed databases to the problem of Kubernetes controller to overcome the limitation of having only a single active controller instance.
+By distributing the responsibility for API objects across a ring of controller instances, concurrent reconciliations are not prevented on a global level but on a per-object level.
+<!-- Membership and failure detection mechanisms are employed to facilitate automatic fail-overs and rebalancing.
+The sharding mechanism is transparent to clients which do not need to be aware of the sharded architecture as no existing API semantics are changed. -->
+A reusable implementation of the design is presented, that can be applied to any Kubernetes controller.
+For this, the sharding components can be installed into any Kubernetes cluster.
+Existing controllers only need to be modified slightly to comply with the sharding mechanism.
+
+First, this thesis describes all relevant fundamentals in detail (chapter [-@sec:fundamentals]).
+This includes the most important aspects of Kubernetes API and controller machinery ([@sec:apimachinery; @sec:controller-machinery]) as well as leader election principles ([@sec:leader-election]).
+Next, a general definition for the scalability of a distributed system as defined in common literature is presented and how the scalability of Kubernetes is defined and measured ([@sec:kubernetes-scalability]).
+[@Sec:controller-scalability] outlines how the scale and performance of a controller setup can be measured.
+Based on this, [@sec:scalability-limitations] analyzes the current scalability limitations of Kubernetes controllers in detail.
+
+Afterward, this thesis examines existing efforts related to sharding in Kubernetes controllers (chapter [-@sec:related-work]).
+Primarily, it assesses the strengths and drawbacks of the design presented in the previous study project ([@sec:related-study-project]).
+Derived from this, chapter [-@sec:requirements] lists precise requirements that need to be fulfilled for removing the identified scalability limitations and for making Kubernetes controller horizontally scalable.
+In accordance with this, an evolved design is developed step by step in chapter [-@sec:design].
+It is based on the design presented in the study project but addresses all additional requirements from the previous chapter.
+
+The implementation of the presented design is described in chapter [-@sec:implementation].
+In addition to explaining how the external sharding components are implemented ([@sec:impl-clusterring; @sec:impl-sharder]), the chapter gives instructions for implementing the shard components in existing controllers ([@sec:impl-shard]).
+An example setup is presented that combines all implemented components to a fully functioning sharded controller setup ([@sec:impl-setup]).
+Next, the implementation is evaluated in systematic load test experiments (chapter [-@sec:evaluation]).
+After precisely describing the experiment setup ([@sec:experiment-setup]) and how measurements are performed ([@sec:measurements]), different experiment scenarios are executed ([@sec:experiments]), and their results are discussed ([@sec:discussion]).
+Finally, a conclusion of the presented work is drawn and future work is layed out (chapter [-@sec:conclusion]).
