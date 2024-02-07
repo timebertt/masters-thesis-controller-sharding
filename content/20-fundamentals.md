@@ -362,7 +362,7 @@ One option is to allocate more memory for the controller, which can increase the
 Another option is to add more worker routines or allocate more CPU cycles for the controller, which can reduce queue times and reconciliation latency.
 Lastly, the network bandwidth can be expanded to ensure prompt delivery of watch events and API requests, which can also reduce reconciliation latency.
 Both increasing CPU allocation and network bandwidth can allow the controller to handle higher churn rates.
-[@studyproject; @fluxdocs]
+[@studyproject; @flux]
 
 As described, Kubernetes controllers are scalable as such, as their load capacity can be expanded by adding more resources to the system.
 However, they can only be scaled vertically, i.e., by adding more resources to the existing controller instance.

@@ -1,13 +1,13 @@
 # Related Work
 
-This chapter describes work related to scaling Kubernetes controllers horizontally.
-It presents approaches in previous scientific work as well as sharding mechanisms implemented in open-source projects.
+This chapter describes work related to sharding Kubernetes controllers and scaling them horizontally.
+It presents approaches in previous scientific work as well as mechanisms implemented in open-source projects.
 Advantages and drawbacks of the described mechanisms are analyzed.
 
 ## Configuration-Based Sharding
 
 Many projects allow limiting the controllers to a single or multiple namespaces instead of watching API resources in all namespaces.
-Examples for this are Flux [@fluxdocs], ExternalDNS [@externaldns], cert-manager [@certmanagerdocs], Ingress-Nginx [@ingressnginxdocs], and prometheus-operator [@prometheusoperatordocs].
+Examples for this are Flux [@flux], ExternalDNS [@externaldns], cert-manager [@certmanagerdocs], Ingress-Nginx [@ingressnginxdocs], and prometheus-operator [@prometheusoperatordocs].
 Based on these configuration options, sharding can be performed to scale controllers horizontally.
 For example, one controller can be deployed for every namespace where a single instance is only responsible for API objects in the corresponding namespace.
 This allows distributing work across multiple controller instances to increase the load capacity of the overall system.
@@ -15,10 +15,10 @@ This allows distributing work across multiple controller instances to increase t
 In such a setup, concurrent reconciliations are prevented by defining responsibilities for objects based on the namespace criterion.
 For this, controllers typically add a field selector to their list and watch requests to only retrieve objects and watch events for the namespace they are responsible for.
 If such controllers work with cluster-scoped resources in addition to the controlled resources, they watch all cluster-scoped resources in all namespaced instances.
-Controllers for cluster-scoped resources cannot be shared with this approach, as such objects are not located in a namespace.
+Controllers for cluster-scoped resources cannot be sharded with this approach, as such objects are not located in any namespace.
 
 Another approach for sharding Kubernetes controllers is to deploy multiple instances that each enable a distinct subset of controllers.
-For example, cert-manager [@certmanagerdocs] and Gardener [@gardenerdocs] offer such configuration options.
+For example, cert-manager [@certmanagerdocs] offers such configuration options.
 In such a setup, concurrent reconciliations can be prevented by enabling a given controller only in a single instance.
 In other words, this performs sharding based on the kind criterion.
 Similar to namespace-based sharding, this allows distributing reconciliations across controller instances for enabling the system to sustain a higher load.
@@ -35,7 +35,7 @@ E.g., with namespace-based sharding, cluster-scoped resources relevant for names
 Also, with controller-based sharding, individual instances might need to watch other dependent API resources that are reconciled by another instance.
 If there are less shared watches compared to a single instance responsible for all API objects, the sharded setup increases the load on the API server, but also requires significantly more compute resources.
 All of these drawbacks limit the horizontal scalability of such sharded setups.
-Hence, these approaches cannot be used for solving generally making Kubernetes controllers horizontally scalable.
+Hence, these approaches are not suited for generally making Kubernetes controllers horizontally scalable.
 
 ## Study Project {#sec:related-study-project}
 
@@ -63,12 +63,12 @@ For this, the sharder first adds a `drain` label to the object and waits until t
 Only then, the sharder sets the `shard` label to the instance ID of the new, desired shard.
 If the current shard is not available, objects are immediately assigned to the new shard without setting the `drain` label first.
 
-This design is a good step towards horizontally scalable Kubernetes controllers.
+This design is a step towards horizontally scalable Kubernetes controllers.
 It achieves a good distribution of reconciliation work across available controller instances.
 Also, the design enables dynamic scaling of the controller replicas during runtime by facilitating automatic rebalancing.
-By using shard-specific label selectors for watch requests, the CPU and memory usage related to process watch events and caching objects is distributed well.
+By using shard-specific label selectors for watch requests, the CPU and memory usage related to processing watch events and caching objects is distributed well.
 
-The design is implemented generically in the controller-runtime [@controllerruntime] library.
+The design is implemented generically in the controller-runtime library [@controllerruntime].
 With this, it can be reused in other controllers that are written in Go and based on controller-runtime.
 Controllers that are not written in Go or that don't use controller-runtime can leverage the same sharding mechanisms, but the presented implementation cannot be reused in such controllers.
 Another drawback of the design is the extra CPU and memory usage of the sharder's watches and caches for sharded API objects.
@@ -81,30 +81,35 @@ This increases the load on the control plane.
 
 ## knative
 
-<!--
-See references in <https://github.com/timebertt/thesis-controller-sharding/issues/1>, tracking issue <https://github.com/knative/pkg/issues/1181>, documentation <https://knative.dev/docs/serving/config-ha/>.
+In knative [@knative], controllers also use leader election but not on a global level[^knative-issue].
+Instead, the controllers perform leader election per reconciler[^reconciler] and per bucket.
+When running multiple instances of the controllers, each instance might acquire a subset of all leases and run only the corresponding reconcilers.
+Some of the reconcilers are leader-aware and run in all instances but behave differently according to the leadership status.
+E.g., the webhook components use reconcilers also for building up indices.
+The reconcilers run in non-leader instances as well, but only perform writing actions in the leader instance.
+Additionally, the keys of all objects are split into a configurable number of buckets.
+Each reconciler leases a subset of buckets, i.e., a shard of objects.
+Before reconciling an object, the reconciler checks if its instance is responsible for the object.
+Only if it is responsible, it continues with the usual reconciliation.
+[@mooresharding]
 
-- controller HA (per-reconciler leader election) [@mooresharding]
-  - goal: fast failover for increased availability
-  - split reconcilers' keyspaces into buckets
-  - leader election per bucket
-    - extra API request volume
-  - implementation on controller-side
-  - reconcilers need to check whether they are responsible for an enqueued object
-  - all instances run all informers
-  - watches are not restricted to shard
-    - memory usage is not distributed, only CPU usage
-  - no guarantees about even distribution of buckets
+![Failover with leader election per controller and bucket [@mooresharding]](../assets/reconciler-buckets.pdf)
 
-- StatefulSet-based controllers
-  - goal: bound worst-case downtime to 1/N, avoid single point of failure
-  - no fast fail-overs
+For realizing these mechanisms, all controller instances run all informers.
+I.e., they watch all objects independent of whether they need to reconcile them or not.
+With this, the controllers' watches are not restricted to the relevant subset of objects.
+While the CPU usage related to reconciliations is distributed across controller instances, the memory usage related to the watch cache is not distributed but rather duplicated.
+Furthermore, the mechanisms doesn't guarantee an even distribution of objects across instances.
+To counteract an uneven distribution, a higher number of buckets needs to be configured.
+This in turn increases the additional API request volume for `Lease` objects even further.
 
-Summary:
+The described sharding mechanisms in knative achieve fast fail-overs as informers are warmed in all instances.
+However, the scalability of the system is still limited as the watch caches resource impact is duplicated and not distributed.
+Applying the described concepts to other controllers is complex and requires notable changes to the controller implementation.
+To summarize, the system benefits from these mechanism in terms of availability, but not in terms of scalability.
 
-- purpose is high availability
-- not horizontal scaling
--->
+[^reconciler]: Here, the term reconciler describes a single controller type for a specific object kind.
+[^knative-issue]: The implementation efforts were tracked in <https://github.com/knative/pkg/issues/1181>.
 
 ## Flux
 
