@@ -13,7 +13,7 @@ This pattern is commonly referred to as the operator pattern.
 It is a powerful mechanism for declaratively managing workload, infrastructure, and more – anything that can be managed in an automated way.
 [@operatorhub]
 
-The Kubernetes community has extensively picked up the operator pattern and many popular open-source projects in various categories are based on it, e.g.:
+The Kubernetes community has extensively picked up the operator pattern and many open-source projects in various categories are based on it, e.g.:
 
 - database: MariaDB operator [@mariadboperator], PostgreSQL operator [@postgresoperatorzalando; @postgresoperatorcrunchy], K8ssandra [@k8ssandra], MongoDB operator [@mongodboperator]
 - streaming & messaging: strimzi-kafka-operator [@strimzi], Koperator [@koperator]
@@ -22,7 +22,7 @@ The Kubernetes community has extensively picked up the operator pattern and many
 - networking: Knative [@knative], Istio [@istio]
 - infrastructure and application management: Crossplane [@crossplane], Argo CD [@argocd], Flux [@flux], KubeVela [@kubevela]
 - cluster management: Gardener [@gardenerdocs], Cluster API [@clusterapi]
-- cloud infrastructure: Yaook [@yaook]
+- cloud infrastructure: Yaook [@yaook], IronCore [@ironcore]
 
 With these projects gaining popularity, large-scale Kubernetes and controller-based deployments are becoming more common.
 The Kubernetes community recognizes this demand and ensures that the Kubernetes core components scale well.

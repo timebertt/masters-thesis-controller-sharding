@@ -113,13 +113,48 @@ To summarize, the system benefits from these mechanism in terms of availability,
 
 ## Flux
 
-<!--
-See <https://fluxcd.io/flux/installation/configuration/sharding/>.
+The Flux controllers offer a command line option `--watch-label-selector` that filters the controllers' watch caches using a label selector.
+This can be used to scale out Flux controllers horizontally using a sharding strategy.
+For this, users deploy multiple instances of the same controller with unique label selectors used as the sharding key[^flux-sharding].
+Then, users assign objects to shards by adding the shard key label to the respective manifests ([@lst:flux-sharding]).
+As a fallback for unassigned objects, a set of controller instances is deployed that selects all objects that don't have the shard key label.
+[@flux]
 
-- label-based sharding
-- users need to set up multiple instances with distinct label selectors manually
-- users need to label objects manually, no automatic assignment to shards
--->
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: source-controller-shard1
+spec:
+  template:
+    spec:
+      containers:
+      - name: source-controller
+        args:
+        # ...
+        - --watch-label-selector=sharding.fluxcd.io/key=shard1
+# ...
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: podinfo
+  namespace: default
+  labels:
+    sharding.fluxcd.io/key: shard1
+spec:
+  url: https://github.com/stefanprodan/podinfo
+# ...
+```
+
+: Example Flux manifests using label-based sharding {#lst:flux-sharding}
+
+With this strategy, reconciliation work and the cache's resource footprint are distributed across multiple controller instances, which enables horizontal scalability of the Flux controllers.
+However, the strategy involves many manual steps: users have to set up individual controller instances with distinct label selectors and need to assign objects to shards manually.
+Accordingly, the system doesn't detect failures in individual instances, nor does it perform automatic fail-overs or rebalancing.
+The sharding strategy is limited to a static number of instances and doesn't allow for dynamic instances changes, e.g., due to instance failures or automatic scaling.
+
+[^flux-sharding]: <https://fluxcd.io/flux/installation/configuration/sharding/>
 
 ## ArgoCD
 
