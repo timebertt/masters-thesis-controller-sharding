@@ -181,18 +181,28 @@ However, this is specific to Argo CD's application controller and the mechanism 
 
 ## KubeVela
 
-<!--
-See <https://kubevela.io/docs/platform-engineers/system-operation/controller-sharding/>
+KubeVela also allows running multiple instances of its core controller responsible for deploying applications to support large scale use cases.
+For this, multiple instances of the vela-core are deployed – one in master mode and the others in slave mode (shards).
+The master instance runs all controllers and webhooks and is responsible for scheduling applications to one of the available shard instances.
+The shard instances on the other hand are labeled with a unique `shard-id` label and only run the application controller.
+[@kubevela]
 
-- also uses labels to assign objects to shards
-- also uses webhook (in master) to add labels
-- dynamic shard discovery by default?
-- only runs shards for the "main" controller, other controllers still run in master
-- no resyncs: objects need to be recreated/assigned/reassigned manually
-  - when master is down, objects stay unassigned
-  - when assigned shard is down, objects are not moved
-- static shard names?
--->
+When a new application is created by a user or any other client, the master instance intercepts the request using a mutating webhook.
+It then discovers available shard by selecting ready pods in its namespace with the `shard-id` label.
+The application object is assigned by the mutating webhook to the designated instance by adding the `scheduled-shard-id` label.
+All shard instances use a watch label selector with the `scheduled-shard-id` label to select the subset of applications scheduled to the respective instance.
+With this, the reconciliation work and resource consumption of the watch cache are distributed across the shard instances.
+[@kubevela]
+
+![Sharding architecture in KubeVela [@kubevela]](../assets/kubevela-sharding.jpg)
+
+While the application webhook dynamically discovers the set of available shard instances, there are no automatic reassignments when a new instance is added or an existing one is removed.
+Most importantly, when a shard instance fails, the assigned applications are not reassigned and hence no longer reconciled.
+Additionally, applications stay unassigned if there is no available shard at the time of creation.
+In both cases, manual interaction is required to restore functionality of the system.
+Futhermore, the creation of application objects is blocked if the master instance serving the mutating webhook is currently unavailable.
+Lastly, if a new shard is added to the system, there is no automatic rebalancing.
+I.e., the user is required to manually reassign existing objects for restoring a balanced assignment distribution.
 
 <!--
 ## Sharding on Workload Level?

@@ -7,13 +7,13 @@ Conclusion:
 - design makes Kubernetes controllers horizontally scalable
 - req. \ref{req:membership} Membership and Failure Detection
   - suitable for dynamic environments
-  - automatic failover for failed and removed shards (better than Flux, ArgoCD, KubeVela)
+  - automatic failover for failed and removed shards (better than Flux, Argo CD, KubeVela)
 - req. \ref{req:partitioning} Partitioning
   - balanced distribution for all ring sizes
   - controlled objects assigned to same shard as owner
 - req. \ref{req:coordination} Coordination and Object Assignment
-  - automatic, no user action needed (better than Flux, ArgoCD)
-  - uses label selector to filter caches (better than ArgoCD)
+  - automatic, no user action needed (better than Flux, Argo CD)
+  - uses label selector to filter caches (better than Argo CD)
 - req. \ref{req:concurrency} Preventing Concurrency
   - still guaranteed although no leader is elected
 - req. \ref{req:scale-out} Incremental Scale-Out
