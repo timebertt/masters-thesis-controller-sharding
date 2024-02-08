@@ -32,18 +32,21 @@ To conclude, the systematic evaluation has shown that all identified requirement
 As the mechanism is simple to apply to existing controllers, it opens opportunities for adoption of the presented work as well as discussion and collaboration in the open-source community.
 Because the implementation does not depend on using a specific Kubernetes version, further development is simplified.
 
-Future Work:
+As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through the use in productive controllers.
+For this, feedback from the community on the presented development needs to be collected.
+If certain use cases cannot adopt the presented work, new requirements shall be collected and explored.
+For example, it might become necessary to consider other relationships between objects in the partitioning algorithm, e.g., multiple levels of ownership.
 
-- further evaluation in productive controllers
-- gather feedback from the community
-- explore and evaluate new requirements of existing controllers
-  - other relationships between objects than ownership
-  - multiple levels of ownership
-- further experiments
-  - rolling updates
-  - chaos testing
-  - autoscaling
-- sharding can be used for canary deployments, similar to KubeVela's grayscale controller release [@kubevela]
-- if there is sufficient interest, sharding mechanism could be built into core Kubernetes components
-  - no additional installation required, no extra components to manage
-  - assignments in admission plugin for lower latency
+Additionally, the sharding mechanism might be applied to advanced use cases that are not strictly related to horizontal scalability.
+For example, distributing reconciliation work across multiple instances opens up the possibility to run different controller versions for a subset of objects.
+This in turn could be orchestrated for validating new controller versions in the style of a canary rollout [@kubevela; @adams2015practice; @schermann2018].
+
+If sufficient interest in sharding Kubernetes controllers arises, it could be considered to built the sharding mechanism into the core Kubernetes components.
+Users would benefit from a more tightly integrated experience without the need to manage the dedicated sharding components.
+Furthermore, object assignments could be performed in an in-tree admission plugin in the API server which eliminates the latency added by network operations for webhook calls.
+
+\todo[inline]{further experiments if not done in evaluation}
+
+- rolling updates
+- chaos testing
+- autoscaling
