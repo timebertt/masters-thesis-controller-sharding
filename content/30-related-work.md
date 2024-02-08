@@ -203,39 +203,3 @@ In both cases, manual interaction is required to restore functionality of the sy
 Futhermore, the creation of application objects is blocked if the master instance serving the mutating webhook is currently unavailable.
 Lastly, if a new shard is added to the system, there is no automatic rebalancing.
 I.e., the user is required to manually reassign existing objects for restoring a balanced assignment distribution.
-
-<!--
-## Sharding on Workload Level?
-
-- ingress controller sharding by route: <https://docs.openshift.com/container-platform/4.14/networking/ingress-sharding.html>
-- machine learning applications: <https://medium.com/workday-engineering/implementing-a-fully-automated-sharding-strategy-on-kubernetes-for-multi-tenanted-machine-learning-4371c48122ae>
-
-### Prometheus
-
-- not controller-based sharding, but uses API machinery for service discovery
-- `modulus` in service discovery config: <https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config>
-- support for automatic sharding in prometheus-operator: <https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/shards-and-replicas.md>
-- hash the discovered `__address__` label to distribute scrape targets across multiple instances
-- no dynamic resharding/rebalancing, only applies to new scrapes
-  - scaling down shards does not reshard data onto remaining instances, it must be manually moved
-  - scaling up shards does not reshard data, but it will continue to be available from the same instances
-
-### kube-state-metrics
-
-See <https://github.com/kubernetes/kube-state-metrics#horizontal-sharding>.
-
-- horizontal sharding with multiple `Deployments`
-  - only serve a subset of object metrics
-  - all instances watch, marshal, and cache all objects!
-  - sharding benefit is only on the serving/scraping side -> quickly return to Prometheus
-  - each instance must have a shard index (`--shard`) and the total number of shards configured (`--total-shards`) -> no membership, failure detection, etc.
-  - partitioning using md5 of UID and modulo `--total-shards`
-  - coordination, object assignment not needed: Prometheus deduplicates time series (or rather the queries `without(instance)`)
-- automated horizontal sharding via `StatefulSet`
-  - automatically discover shard index and total number of shards
-  - rollout includes a downtime for each shard
-- sharding by node for pod metrics using `DaemonSet`
-  - watch with field selector for `spec.nodeName`
-  - distributes watch and cache across instances
-  - rollout includes a downtime for each shard
--->
