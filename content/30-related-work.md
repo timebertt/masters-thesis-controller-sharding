@@ -156,32 +156,28 @@ The sharding strategy is limited to a static number of instances and doesn't all
 
 [^flux-sharding]: <https://fluxcd.io/flux/installation/configuration/sharding/>
 
-## ArgoCD
+## Argo CD
 
-<!--
-See:
+In Argo CD [@argocddocs], the application controller is the central component that deploys manifests pulled from Git repositories to Kubernetes.
+It works with one or more clusters configured via `Secrets`, that contain credentials for the cluster.
+The reconciliation process for applications can become memory-intensive depending on the number and size of the deployed manifests.
 
-- benchmarks:
-  - <https://aws.amazon.com/blogs/opensource/argo-cd-application-controller-scalability-testing-on-amazon-eks/>
-  - <https://cnoe.io/blog/argo-cd-application-scalability>
-- docs:
-  - <https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/#argocd-application-controller>
-  - <https://www.infracloud.io/blogs/sharding-clusters-across-argo-cd-application-controller-replicas/>
-  - <https://argocd-operator.readthedocs.io/en/latest/reference/argocd/#controller-options>
-- initial implementation: <https://github.com/argoproj/argo-cd/issues/4284>
-- dynamic rebalancing: <https://github.com/argoproj/argo-cd/pull/15036>
-  - <https://github.com/argoproj/argo-cd/blob/master/docs/proposals/rebalancing-clusters-across-shards-dynamically.md>
+To support using Argo CD to deploy thousands of applications to a high number of clusters, users can configure the application controller to run multiple instances and distribute work across them.
+For this, individual clusters can either be assigned to a shard manually in the cluster `Secret` or be assigned by the application controller automatically based on a selected partitioning algorithm.
+Depending on whether the application controller is deployed as a `StatefulSet` (static sharding) or `Deployment` (dynamic sharding[^argodynamic]), the assignments from controller instances to shards is stored in a central `ConfigMap`.
+If the dynamic sharding mechanism is used, the `ConfigMap` also stores heartbeat data for all shards.
+Based on this and the status of instance readiness probes, all controller instances can determine the health of a given instance and decide whether a shard needs to be reassigned to a different instance.
+With this mechanism, the application controller can facilitate dynamic scaling and automatic rebalancing.
+[@argoaws; @argocnoe; @argoinfracloud]
 
-Summary:
+While the described mechanisms help scaling Argo CD horizontally for use cases with many clusters, they cannot be used for scaling the application controller for use cases with many application on only a few clusters.
+Also, if the sharding approach based on a `StatefulSet` is used, all instances need to be rolled to configure a new number of instances.
+Furthermore, depending on the chosen partitioning algorithm, removing a cluster from the system can cause a reshuffling of all other assignments and, with this, a significant performance impact.
+Additionally, the sharding mechanism doesn't distribute the load of the watch cache, but only the reconciliation work.
+In case of the application controller, the watch cache's memory footprint is negligible in comparison to the memory footprint of processing all deployed manifests, etc.
+However, this is specific to Argo CD's application controller and the mechanism is hence not suitable for being reused in arbitrary Kubernetes controllers.
 
-- application controller is sharded by cluster (shard key = cluster)
-- all applications on one cluster are assigned to the same shard
-- shard can be assigned manually in cluster secret
-- algorithm:
-  - legacy: `hash(cluster secret UID) % replicas`
-  - now: round-robin
-- supports dynamic scaling based on clusters per shard
--->
+[^argodynamic]: <https://github.com/argoproj/argo-cd/blob/master/docs/proposals/rebalancing-clusters-across-shards-dynamically.md>
 
 ## KubeVela
 
