@@ -33,6 +33,7 @@
         "kube",
         "kube-apiserver",
         "kube-prometheus",
+        "Kubebuilder",
         "Kubeflow",
         "kubelet",
         "kubernetes",
@@ -45,6 +46,7 @@
         "sharded",
         "sharder",
         "strimzi",
+        "subresource",
         "Velero",
         "webhosting",
         "Yaook"
