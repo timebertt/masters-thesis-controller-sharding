@@ -24,14 +24,19 @@
     "words": [
         "cadvisor",
         "chaosduck",
+        "Crossplane",
         "DHBW",
+        "failovers",
         "goroutines",
+        "Istio",
         "knative",
         "kube",
         "kube-apiserver",
         "kube-prometheus",
+        "Kubeflow",
         "kubelet",
         "kubernetes",
+        "Metacontroller",
         "pandoc",
         "Parca",
         "rebalancing",
@@ -39,6 +44,9 @@
         "schedulable",
         "sharded",
         "sharder",
-        "webhosting"
+        "strimzi",
+        "Velero",
+        "webhosting",
+        "Yaook"
     ]
 }

@@ -241,7 +241,7 @@ In scenarios where an instance is terminated, such as during rolling updates, th
 
 Leader election ensures that only a single active leader exists at any given time.
 Deploying multiple instances of the same controller thereby establishes an active-passive high-availability (HA) setup [@ahluwalia2006high].
-This configuration allows for fast fail-overs, as another instance on standby is ready to assume the leadership role.
+This configuration allows for fast failovers, as another instance on standby is ready to assume the leadership role.
 It is important to note that this approach is distinct from horizontal scaling, as it maintains a single leader rather than distributing the workload across multiple controllers [@bondi2000characteristics; @jogalekar2000evaluating].
 
 While leader election satisfies the requirement to prevent concurrent reconciliations of a single object across multiple controllers, it operates on a global level rather than a per-object basis.

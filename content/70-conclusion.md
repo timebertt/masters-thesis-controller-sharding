@@ -9,7 +9,7 @@ It proves that well-established sharding mechanisms from distributed databases a
 The key properties of the presented work are:
 
 - Controller instances (shards) announce themselves to the sharder via individual heartbeat resources.
-The sharder determines the availability of shards and detects failures based on this membership information to perform automatic fail-overs and rebalancing as soon as the set of available shards changes.
+The sharder determines the availability of shards and detects failures based on this membership information to perform automatic failovers and rebalancing as soon as the set of available shards changes.
 This makes the mechanism suitable for use in highly dynamic environments (req. \ref{req:membership}).
 - A consistent hashing algorithm is used for achieving a balanced distribution of API objects for all ring sizes.
 The partitioning mechanism takes object ownership into account, so that controlled objects are assigned to the same shard as their owner (req. \ref{req:partitioning}).

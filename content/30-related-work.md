@@ -103,7 +103,7 @@ Furthermore, the mechanisms doesn't guarantee an even distribution of objects ac
 To counteract an uneven distribution, a higher number of buckets needs to be configured.
 This in turn increases the additional API request volume for `Lease` objects even further.
 
-The described sharding mechanisms in knative achieve fast fail-overs as informers are warmed in all instances.
+The described sharding mechanisms in knative achieve fast failovers as informers are warmed in all instances.
 However, the scalability of the system is still limited as the watch caches resource impact is duplicated and not distributed.
 Applying the described concepts to other controllers is complex and requires notable changes to the controller implementation.
 To summarize, the system benefits from these mechanism in terms of availability, but not in terms of scalability.
@@ -151,7 +151,7 @@ spec:
 
 With this strategy, reconciliation work and the cache's resource footprint are distributed across multiple controller instances, which enables horizontal scalability of the Flux controllers.
 However, the strategy involves many manual steps: users have to set up individual controller instances with distinct label selectors and need to assign objects to shards manually.
-Accordingly, the system doesn't detect failures in individual instances, nor does it perform automatic fail-overs or rebalancing.
+Accordingly, the system doesn't detect failures in individual instances, nor does it perform automatic failovers or rebalancing.
 The sharding strategy is limited to a static number of instances and doesn't allow for dynamic instances changes, e.g., due to instance failures or automatic scaling.
 
 [^flux-sharding]: <https://fluxcd.io/flux/installation/configuration/sharding/>
