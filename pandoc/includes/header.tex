@@ -275,12 +275,12 @@ Prüfer & \Lecturer \\
 \newcommand{\req}[1]{%
 \refstepcounter{req}%
 \label{req:#1}%
-Req. \arabic{req}:
+Req.~\arabic{req}:
 }
 \makeatletter
 \newcommand{\refreq}{\@ifstar\refreq@star\refreq@nostar}
 \newcommand{\refreq@nostar}[1]{%
-req. \ref{req:#1}%
+req.~\ref{req:#1}%
 }
 \newcommand{\refreq@star}[1]{%
 \ref{req:#1}%
@@ -292,12 +292,12 @@ req. \ref{req:#1}%
 \newcommand{\evt}[1]{%
 \refstepcounter{evt}%
 \label{evt:#1}%
-Event \arabic{evt}:
+Event~\arabic{evt}:
 }
 \makeatletter
 \newcommand{\refevt}{\@ifstar\refevt@star\refevt@nostar}
 \newcommand{\refevt@nostar}[1]{%
-evt. \ref{evt:#1}%
+evt.~\ref{evt:#1}%
 }
 \newcommand{\refevt@star}[1]{%
 \ref{evt:#1}%
@@ -313,10 +313,43 @@ evt. \ref{evt:#1}%
 \makeatletter
 \newcommand{\refdimn}{\@ifstar\refdimn@star\refdimn@nostar}
 \newcommand{\refdimn@nostar}[1]{%
-dimension \ref{dimn:#1}%
+dimension~\ref{dimn:#1}%
 }
 \newcommand{\refdimn@star}[1]{%
 \ref{dimn:#1}%
+}
+\makeatother
+
+% Kubernetes SLOs (roman numerals)
+\newcounter{slok}
+\renewcommand{\theslok}{\Roman{slok}}
+\newcommand{\slok}[1]{%
+\refstepcounter{slok}%
+\label{slok:#1}%
+}
+\makeatletter
+\newcommand{\refslok}{\@ifstar\refslok@star\refslok@nostar}
+\newcommand{\refslok@nostar}[1]{%
+SLO~\ref{slok:#1}%
+}
+\newcommand{\refslok@star}[1]{%
+\ref{slok:#1}%
+}
+\makeatother
+
+% Controller SLOs (arabic numerals)
+\newcounter{sloc}
+\newcommand{\sloc}[1]{%
+\refstepcounter{sloc}%
+\label{sloc:#1}%
+}
+\makeatletter
+\newcommand{\refsloc}{\@ifstar\refsloc@star\refsloc@nostar}
+\newcommand{\refsloc@nostar}[1]{%
+SLO~\ref{sloc:#1}%
+}
+\newcommand{\refsloc@star}[1]{%
+\ref{sloc:#1}%
 }
 \makeatother
 

@@ -294,9 +294,9 @@ I.e., the aim of these tests is not to measure the scalability of Kubernetes but
 At the time of writing, the Kubernetes community defines three official SLIs with corresponding SLOs that are satisfied when the load is below the recommended thresholds:
 [@k8scommunity]
 
-1. The latency of processing mutating API calls for single objects (`create`, `update`, `patch`, `delete`) for every (resource, verb) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second.
-2. The latency of processing non-streaming read-only API calls (`get`, `list`) for every (resource, scope) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second (for requests reading a single object) or at maximum 30 seconds (for requests reading all objects from a single namespace or all objects in the cluster).
-3. The latency of starting pods without persistent volumes that don't required cluster autoscaling or preemption, excluding image pulling and init containers, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum 5 seconds.
+I.  \slok{mutating}The latency of processing mutating API calls for single objects (`create`, `update`, `patch`, `delete`) for every (resource, verb) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second.
+II.  \slok{read}The latency of processing non-streaming read-only API calls (`get`, `list`) for every (resource, scope) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second (for requests reading a single object) or at maximum 30 seconds (for requests reading all objects from a single namespace or all objects in the cluster).
+III.  \slok{startup}The latency of starting pods without persistent volumes that don't required cluster autoscaling or preemption, excluding image pulling and init containers, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum 5 seconds.
 
 More SLIs and SLOs are being worked on but have not been defined precisely yet and are thus not guaranteed.
 These SLIs include in-cluster network programming and execution latency, in-cluster DNS programming and lookup latency, and API-related latencies of watch requests, admission plugins, and webhooks.
@@ -318,13 +318,13 @@ As a prerequisite for these performance indicators to be meaningful, the officia
 Most importantly, the control plane must facilitate reasonable API request processing latency.
 To consider a controller setup as performing adequately, the following SLOs need to be satisfied:
 
-1. The time of enqueuing object keys for reconciliation for every controller, measured as the 99th percentile per cluster-day, is at maximum 1 second.
-2. The latency of realizing the desired state of objects for every controller, excluding reconciliation time of controlled objects, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum $x$, where $x$ depends on the controller.
+1. \sloc{queue}The time of enqueuing object keys for reconciliation for every controller, measured as the 99th percentile per cluster-day, is at maximum 1 second.
+2. \sloc{recon}The latency of realizing the desired state of objects for every controller, excluding reconciliation time of controlled objects, until observed by a watch request, measured as the 99th percentile per cluster-day, is at maximum $x$, where $x$ depends on the controller.
 
-The queue duration (SLI 1) is comparable to the API request latency SLIs of Kubernetes.
+The queue duration (SLI \refsloc*{queue}) is comparable to the API request latency SLIs of Kubernetes (SLI \refslok*{mutating}, \refslok*{read}).
 It captures the system's responsiveness, where a low queue duration results in a better user experience.
 If the time object keys are queued for reconciliation is too high, changes to the objects' desired state are not processed promptly, and changes to objects' observed state are not recorded promptly.
-The reconciliation latency (SLI 2) is comparable to Kubernetes' pod startup latency SLI.
+The reconciliation latency (SLI \refsloc*{recon}) is comparable to Kubernetes' pod startup latency SLI (SLI \refslok*{startup}).
 It measures how fast the system can bring the desired state of objects to reality.
 However, it strongly depends on the type of controller.
 For example, a simple controller owning a small set of objects should only take 5 seconds at maximum to configure them as desired, while a controller orchestrating a large set of objects or external infrastructure might take up to 1 minute to reach the desired state.
@@ -351,8 +351,8 @@ This doesn't have a direct impact on the SLIs.
 However, when consuming more memory than available, the controller might fail due to out-of-memory faults.
 When the load on a controller grows by increasing the object churn rate (\refdimn{churn}), more watch events for relevant objects are transferred over the network.
 The processing of the additional watch events also results in a higher CPU usage for decoding and for performing reconciliations.
-If the number of worker routines is not high enough to facilitate the needed rate of reconciliations, the queue time (SLI 1) increases.
-Also, if performing reconciliations is computationally intensive, the extra CPU usage might exhaust the available CPU cycles, increasing the reconciliation latency (SLI 2).
+If the number of worker routines is not high enough to facilitate the needed rate of reconciliations, the queue time (SLI \refsloc*{queue}) increases.
+Also, if performing reconciliations is computationally intensive, the extra CPU usage might exhaust the available CPU cycles, increasing the reconciliation latency (SLI \refsloc*{recon}).
 
 More resources can be added to the setup to expand the load capacity of the controller setup or to fulfill the SLOs under increased load.
 One option is to allocate more memory for the controller, which can increase the maximum number of objects that a controller's watch cache can store.

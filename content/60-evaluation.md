@@ -97,11 +97,11 @@ This is used to verify that configured SLOs are satisfied during a load test exp
 
 For the measurements to be meaningful, the Kubernetes cluster SLOs themselves, as described in [@sec:kubernetes-scalability], must be satisfied.
 I.e., it must be ensured that the cluster itself, where the controllers are running, is performing well.
-While the latency of API requests (SLI 1 and 2) is relevant for the experiment setup, pod startup latency (SLI 3) is irrelevant as the load tests do not trigger pod startups.
+While the latency of API requests (SLI \refslok*{mutating}, \refslok*{read}) is relevant for the experiment setup, pod startup latency (SLI \refslok*{startup}) is irrelevant as the load tests do not trigger pod startups.
 
 ```yaml
 queries:
-- name: latency-mutating # SLO 1
+- name: latency-mutating # SLO I
   type: instant
   slo: 1
   query: |
@@ -112,7 +112,7 @@ queries:
         subresource!~"log|exec|portforward|attach|proxy"
       }[$__range]
     ))) > 0
-- name: latency-read-resource # SLO 2 - resource scope
+- name: latency-read-resource # SLO II - resource scope
   type: instant
   slo: 1
   query: |
@@ -123,7 +123,7 @@ queries:
         subresource!~"log|exec|portforward|attach|proxy"
       }[$__range]
     ))) > 0
-- name: latency-read-namespace-cluster # SLO 2 - namespace and cluster scope
+- name: latency-read-namespace-cluster # SLO II - namespace and cluster scope
   type: instant
   slo: 30
   query: |
@@ -182,8 +182,8 @@ queries:
 : Queries for measuring controller load {#lst:load-queries}
 
 To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are also measured.
-The time that object keys are enqueued for reconciliation (SLI 1) is directly derived from the queue-related metrics exposed by controller-runtime.
-For SLI 2, the experiment tool measures the time until changes to the desired state of `Websites` are reconciled and ready.
+The time that object keys are enqueued for reconciliation (SLI \refsloc*{queue}) is directly derived from the queue-related metrics exposed by controller-runtime.
+For SLI \refsloc*{recon}, the experiment tool measures the time until changes to the desired state of `Websites` are reconciled and ready.
 
 The API server automatically increases an object's generation for its creation and for every specification change.
 The experiment tool stores the time it triggered the change for all object generations.
@@ -225,11 +225,11 @@ queries:
 
 [@Lst:controller-slo-queries] shows the queries verifying the described controller SLOs.
 Similar to verifying the control plane's SLOs, the measurements are taken over the load test duration instead of per cluster-day.
-Note that the measurement for SLI 2 is stricter than the definition in [@sec:controller-scalability].
+Note that the measurement for SLI \refsloc*{recon} is stricter than the definition in [@sec:controller-scalability].
 Initially, the reconciliation latency SLI excluded the reconciliation time of controlled objects, as they are outside the scope of the measured controller's responsibility.
 However, in the load tests, the reconciliation time of controlled objects – namely, `Deployments` – is short because they do not run any replicas.
 The `Deployment` controller must only observe the object and set the `Available` condition to `True`.
-Hence, the measurement used for verifying SLO 2 includes the reconciliation time `Deployments` of `Websites` for simplicity.
+Hence, the measurement used for verifying SLO \refsloc*{recon} includes the reconciliation time `Deployments` of `Websites` for simplicity.
 Furthermore, the user's performance expectations are the same regardless of whether the controller uses sharding.
 Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller, respectively.
 
@@ -434,7 +434,7 @@ TODO (but optional)
 
 - similar to scale out scenario
 - horizontal autoscaling of controller according to load
-  - HPA on queue duration (SLI 1)
+  - HPA on queue duration (SLI \refsloc*{queue})
 - evaluate coordination on object movements
 
 ## Discussion
