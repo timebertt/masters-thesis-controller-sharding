@@ -145,8 +145,6 @@ Additionally, caches can be configured to use filtered list and watch requests t
 
 ![Building blocks of a controller [@samplecontroller]](../assets/controller-components.jpg)
 
-\todo{Replace with custom diagram}
-
 The watch cache (the informer) also dispatches watch events to event handlers registered by controllers.
 Event handlers typically filter relevant changes based on the updated object, minimizing unnecessary reconciliation work.
 Based on this, event handlers optionally enqueue the object's key (`namespace/name`) to the work queue.

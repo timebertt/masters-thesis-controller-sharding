@@ -226,8 +226,6 @@ Second, it sets the `resourceVersion` request parameter to `0`, instructing the 
 Finally, the controller performs paginated list requests to keep a limited number of objects in memory at any given time (500 objects by default).
 This prevents excessive spikes in the sharder's memory consumption.
 Such spikes would be proportional to the number of sharded objects, limiting the system's scalability and conflict with req. \ref{req:constant}.
-\todo{controller triggers webhook for assignments}
-\todo{controller needs RBAC for sharded resources}
 
 ## Shard Components {#sec:impl-shard}
 
@@ -317,7 +315,7 @@ Next, the sharded controllers must use a label selector on watches for all shard
 The shard label's value is the name of the shard, i.e., the name of the shard lease and the shard lease's `holderIdentity`.
 With this, the shard will only cache the objects assigned to it, and the controllers will only reconcile this subset of objects.
 Note that when using a label selector on a watch request and the label changes so that the selector now matches or does not match anymore, the API server will emit a `ADD` or `DELETE` watch event respectively.
-In controller-runtime, the shard's manager can be configured to watch and reconcile only objects assigned to it, as shown in [@lst:go-filter-cache] [^filter-cache-version].
+In controller-runtime, the shard's manager can be configured to watch and reconcile only objects assigned to it, as shown in [@lst:go-filter-cache][^filter-cache-version].
 
 [^filter-cache-version]: The shown code works with controller-runtime v0.16 and v0.17, other versions might require deviating configuration.
 
@@ -463,5 +461,3 @@ sharding-clusterring-50d858e0-example   1          2m50s
 ```
 
 : Bootstrapping the example setup {#lst:example-setup}
-
-\todo[inline]{run through demo (getting started), dynamic instance changes?}
