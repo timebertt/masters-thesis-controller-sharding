@@ -269,18 +269,40 @@ Prüfer & \Lecturer \\
 % https://tex.stackexchange.com/questions/166416/continue-previous-roman-page-numbering-after-changing-to-arabic
 \newcounter{savepage}
 
-%%% custom numbering
-\newcounter{reqCounter}
-\newcommand{\requirement}{%
-\refstepcounter{reqCounter}%
-Req. \arabic{reqCounter}:
+%%% custom labels and cross-references
+% requirements
+\newcounter{req}
+\newcommand{\req}[1]{%
+\refstepcounter{req}%
+\label{req:#1}%
+Req. \arabic{req}:
 }
+\makeatletter
+\newcommand{\refreq}{\@ifstar\refreq@star\refreq@nostar}
+\newcommand{\refreq@nostar}[1]{%
+req. \ref{req:#1}%
+}
+\newcommand{\refreq@star}[1]{%
+\ref{req:#1}%
+}
+\makeatother
 
-\newcounter{evtCounter}
-\newcommand{\event}{%
-\refstepcounter{evtCounter}%
-Event \arabic{evtCounter}:
+% events
+\newcounter{evt}
+\newcommand{\evt}[1]{%
+\refstepcounter{evt}%
+\label{evt:#1}%
+Event \arabic{evt}:
 }
+\makeatletter
+\newcommand{\refevt}{\@ifstar\refevt@star\refevt@nostar}
+\newcommand{\refevt@nostar}[1]{%
+evt. \ref{evt:#1}%
+}
+\newcommand{\refevt@star}[1]{%
+\ref{evt:#1}%
+}
+\makeatother
 
 %%% spacing
 \usepackage{setspace}

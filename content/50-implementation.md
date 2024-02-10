@@ -215,7 +215,7 @@ It then reads all shards of the ring from the `Lease` cache and constructs a con
 Afterward, it determines the desired shard and responds to the API server with an object patch, adding the `shard` label as shown in [@lst:webhook-response].
 
 Finally, the sharder runs the "sharder" controller that handles changes to the set of available shards and the ring's configuration.
-It watches `ClusterRings` and shard `Leases` to reconcile all object assignments of a ring whenever its configuration changes or when a shard becomes available or unavailable (evt. \ref{evt:new-shard} and \ref{evt:shard-down}).
+It watches `ClusterRings` and shard `Leases` to reconcile all object assignments of a ring whenever its configuration changes or when a shard becomes available or unavailable (\refevt{new-shard}, \refevt*{shard-down}).
 With this, the sharder can perform automatic rebalancing in response to dynamic instance changes or configuration changes (e.g., additional sharded resources) without human interaction.
 Additionally, it is triggered periodically (every 5 minutes by default) to perform assignments of objects not assigned by the sharder webhook due to intermediate failures.
 
@@ -225,7 +225,7 @@ First, it lists only the metadata of the sharded objects to reduce the amount of
 Second, it sets the `resourceVersion` request parameter to `0`, instructing the API server to respond with a recent list state from its internal watch cache instead of performing a quorum read from etcd [@k8sdocs].
 Finally, the controller performs paginated list requests to keep a limited number of objects in memory at any given time (500 objects by default).
 This prevents excessive spikes in the sharder's memory consumption.
-Such spikes would be proportional to the number of sharded objects, limiting the system's scalability and conflict with req. \ref{req:constant}.
+Such spikes would be proportional to the number of sharded objects, limiting the system's scalability and conflict with \refreq{constant}.
 
 ## Shard Components {#sec:impl-shard}
 

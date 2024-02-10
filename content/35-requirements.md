@@ -14,7 +14,7 @@ This thesis builds on the requirements posted in the previous study project (req
 While the presented work already fulfills the basic requirements, the evaluation revealed significant drawbacks and limitations that this thesis needs to resolve to make controllers horizontally scalable ([@sec:related-study-project]).
 The set of requirements is extended in this thesis to address the identified limitations accordingly.
 
-\subsection*{\requirement\label{req:membership}Membership and Failure Detection}
+\subsection*{\req{membership}Membership and Failure Detection}
 
 As the foundation, the sharding mechanism needs to populate information about the set of controller instances.
 In order to distribute object ownership across instances, there must be a mechanism for discovering available members of the sharded setup (controller ring).
@@ -25,7 +25,7 @@ Furthermore, instances will typically be replaced in quick succession during rol
 Hence, the sharding mechanism should handle voluntary disruptions explicitly to achieve fast rebalancing during scale-down and rolling updates.
 [@studyproject]
 
-\subsection*{\requirement\label{req:partitioning}Partitioning}
+\subsection*{\req{partitioning}Partitioning}
 
 The sharding mechanism must provide a partitioning algorithm for determining ownership of a given object based on information about the set of available controller instances.
 It must map every sharded API object to exactly one instance.
@@ -36,7 +36,7 @@ As controllers commonly watch controlled objects to trigger reconciliation of th
 I.e., all controlled objects must map to the same partition key as their owners.
 [@studyproject]
 
-\subsection*{\requirement\label{req:coordination}Coordination and Object Assignment}
+\subsection*{\req{coordination}Coordination and Object Assignment}
 
 Based on the partitioning results, the sharding mechanism must provide some form of coordination between individual controller instances and assign API objects to the instances.
 Individual controller instances need to know which objects are assigned to them to perform the necessary reconciliations.
@@ -52,20 +52,20 @@ Essentially, the sharding mechanism must not add additional points of failure on
 During normal operations, reconciliations should not be blocked for a longer period.
 [@studyproject]
 
-\subsection*{\requirement\label{req:concurrency}Preventing Concurrency}
+\subsection*{\req{concurrency}Preventing Concurrency}
 
 Even if object ownership is distributed across multiple controller instances, the controllers must not perform concurrent reconciliations of a single object in different instances.
 Only a single instance may perform mutations on a given object at any time.
 The sharding mechanism must assign all API objects to a single instance and ensure that only one instance performs reconciliations at any given time.
 [@studyproject]
 
-\subsection*{\requirement\label{req:scale-out}Incremental Scale-Out}
+\subsection*{\req{scale-out}Incremental Scale-Out}
 
 The sharding mechanism must provide incremental scale-out properties.
 For this, the system's load capacity must increase almost linearly with the number of added controller instances.
 [@studyproject]
 
-\subsection*{\requirement\label{req:reusable}Reusable Implementation}
+\subsection*{\req{reusable}Reusable Implementation}
 
 As controllers are implemented in arbitrary programming languages and use different frameworks ([@sec:controller-machinery]), the sharding mechanism must be independent of the controller framework and programming language.
 The design should allow a generic implementation to apply the sharding mechanism to any controller.
@@ -75,7 +75,7 @@ Where the mechanism requires compliance of the controller instances, e.g., for a
 However, the core logic of the sharding mechanism should be implemented externally in a reusable way.
 The necessary logic that needs to be reimplemented in the controllers themselves should be limited in scope and simple to implement.
 
-\subsection*{\requirement\label{req:constant}Constant Overhead}
+\subsection*{\req{constant}Constant Overhead}
 
 A sharding mechanism always incurs an unavoidable overhead for tasks like instance management and coordination compared to a non-distributed setup.
 However, the inherent overhead of the sharding mechanism must not increase proportionally with the controller's load.
@@ -83,7 +83,7 @@ Otherwise, the sharding components would face the original scalability limitatio
 I.e., the sharding overhead must be almost constant and independent of the number of objects and the object churn rate.
 Adding more controller instances achieves horizontal scalability only if the design fulfills this requirement.
 
-\subsection*{\requirement\label{req:ecosystem}Only Use API and Controller Machinery}
+\subsection*{\req{ecosystem}Only Use API and Controller Machinery}
 
 The sharding mechanism should stay in the ecosystem of API and controller machinery.
 It should only use the mechanisms provided by the Kubernetes API ([@sec:apimachinery]) and match the core concepts of Kubernetes controllers ([@sec:controller-machinery]).

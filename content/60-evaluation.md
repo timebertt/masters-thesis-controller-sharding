@@ -346,7 +346,7 @@ The results show that the external sharder setup distributes the controller's re
 Each shard roughly consumes a third of the resources consumed by the singleton controller.
 The results also show that performing sharding for controllers comes with an unavoidable resource overhead.
 However, the external sharder's overhead is constant and does not increase with the controller's load in contrast to the internal sharder's overhead.
-With this, the external sharder setup fulfills req. \ref{req:constant}, while the internal sharder setup does not.
+With this, the external sharder setup fulfills \refreq{constant}, while the internal sharder setup does not.
 
 ### Horizontal Scalability {#sec:eval-scale-out}
 
@@ -409,7 +409,7 @@ Note that the load capacity values cannot be interpreted as absolute values but 
 ![Load capacity increase with added instances in scale-out scenario](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
 
 The results show that adding more controller instances brings more performance and increases the maximum load capacity of the system.
-The load capacity grows almost linearly with the number of added instances, so the setup fulfills req. \ref{req:scale-out}.
+The load capacity grows almost linearly with the number of added instances, so the setup fulfills \refreq{scale-out}.
 With this, applying the external sharding design makes Kubernetes controllers horizontally scalable.
 
 ### Rolling Updates
@@ -446,9 +446,9 @@ Each of the $n$ shards is responsible for roughly $1/n$ objects and roughly requ
 Although the sharding mechanism incurs an overhead in resource consumption, the overhead is minimal and negligible at scale.
 Most importantly, the sharder's resource footprint is constant even when the controller's load increases, i.e., when it has to handle more objects or a higher object churn rate.
 In total, the external sharder setup only requires a little more resources than the singleton controller setup to sustain the same load.
-With this, the evaluation has shown that the presented design and implementation fulfills req. \ref{req:constant}.
+With this, the evaluation has shown that the presented design and implementation fulfills \refreq{constant}.
 
-Furthermore, the evaluation shows that the external sharder design provides incremental scale-out properties and fulfills req. \ref{req:scale-out}.
+Furthermore, the evaluation shows that the external sharder design provides incremental scale-out properties and fulfills \refreq{scale-out}.
 The load capacity of the controller system can be incrementally increased by adding more instances.
 With the presented design, the load capacity increases almost linearly with the number of added controller instances.
 This proves that the architecture is horizontally scalable as defined in [@bondi2000characteristics; @duboc2007framework] ([@sec:kubernetes-scalability]).

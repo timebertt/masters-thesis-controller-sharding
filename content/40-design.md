@@ -11,7 +11,7 @@ Based on this, the following sections develop changes to the design regarding ho
 
 The following is a complete list of sharding events that must be considered by the sharder and what actions it needs to perform for each event.
 
-\subsubsection*{\event\label{evt:new-shard}A new shard becomes available}
+\subsubsection*{\evt{new-shard}A new shard becomes available}
 
 When a new shard becomes available for assignments, no existing objects are assigned to the instance.
 Accordingly, the sharder needs to rebalance assignments of existing objects to achieve a good distribution of reconciliation work.
@@ -23,22 +23,22 @@ It needs to consider all objects and perform one of the following actions accord
 - If the object is assigned to an unavailable shard, assign it directly to the desired available shard.
 - If the object is assigned to an available shard but should be moved to another shard, start the handover protocol by draining the object.
 
-\subsubsection*{\event\label{evt:shard-down}An existing shard becomes unavailable}
+\subsubsection*{\evt{shard-down}An existing shard becomes unavailable}
 
 If an existing shard becomes unavailable, the sharder must move all objects assigned to it to another available shard.
 Here, the sharder must consider all objects with the `shard` label set to the unavailable shard.
 It must determine the desired available shard using the partitioning algorithm for every object and add the `shard` label accordingly.
 If the object is in the process of being drained – i.e., it still carries the `drain` label – the sharder must remove the `drain` label together with adding the `shard` label.
 If there is no remaining available shard, the sharder does not need to take any action.
-In this case, objects effectively stay unassigned until a new shard becomes available (evt. \ref{evt:new-shard}).
+In this case, objects effectively stay unassigned until a new shard becomes available (\refevt{new-shard}).
 
-\subsubsection*{\event\label{evt:new-object}A new object is created, or an object is drained}
+\subsubsection*{\evt{new-object}A new object is created, or an object is drained}
 
 When a client creates a new API object, it is unassigned, and neither carries the `shard` nor the `drain` label.
 This is also the case when an existing object should be moved to another shard and drained successfully by the currently responsible shard.
 
 In these cases, the sharder must directly assign the object to one of the available shards.
-If there is no available shard, the assignment is deferred until a new shard becomes available (evt. \ref{evt:new-shard}).
+If there is no available shard, the assignment is deferred until a new shard becomes available (\refevt{new-shard}).
 
 ## Architecture
 
@@ -58,17 +58,17 @@ Both components realize object assignments in response to different sharding eve
 
 The evolved design addresses the extended requirements by two different architectural changes.
 First, moving partitioning, assignment, and coordination logic to an external sharder deployment configurable via custom resources makes the sharding mechanism independent of the used controller framework and programming language.
-With this, the sharding implementation becomes reusable for any arbitrary Kubernetes controller, fulfilling req. \ref{req:reusable} ([@sec:design-external]).
+With this, the sharding implementation becomes reusable for any arbitrary Kubernetes controller, fulfilling \refreq{reusable} ([@sec:design-external]).
 
-Second, the design limits the overhead of the sharding mechanism to be independent of the controller's load (req. \ref{req:constant}) by performing assignments during object admission when required by event \ref{evt:new-object}.
+Second, the design limits the overhead of the sharding mechanism to be independent of the controller's load (\refreq{constant}) by performing assignments during object admission when required by event \refevt{new-object}.
 A mutating webhook is triggered whenever a client creates a new unassigned object or the currently responsible shard removes the `drain` label from an existing object ([@sec:design-admission]).
 With this, watching the sharded objects is obsolete and allows removing the watch cache that causes a resource usage proportional to the number of objects.
 Additionally, this change reduces the API request volume caused by assignments and coordination.
 
 ## External Sharder {#sec:design-external}
 
-The first architectural change generalizes the sharding design and makes the implementation reusable to address req. \ref{req:reusable}.
-Note that this change does not reduce the resource overhead or API request volume to address req. \ref{req:constant}, but only move it to an external deployment.
+The first architectural change generalizes the sharding design and makes the implementation reusable to address \refreq{reusable}.
+Note that this change does not reduce the resource overhead or API request volume to address \refreq{constant}, but only move it to an external deployment.
 
 Instead of running the sharder as another controller in the sharded controller deployment itself, it is extracted to a dedicated external deployment without changing its core logic.
 This allows for reusing the sharder for multiple sharded controller deployments in the same cluster.
@@ -128,11 +128,11 @@ However, implementing these changes generically in the respective controller fra
 ## Assignments in Admission {#sec:design-admission}
 
 The second architectural change ensures that the overhead of the sharding mechanism stays the same independent of the controller's load.
-It ensures a constant overhead for true horizontal scalability of sharded controller setups, addressing req. \ref{req:scale-out} and \ref{req:constant}.
+It ensures a constant overhead for true horizontal scalability of sharded controller setups, addressing \refreq{scale-out} and \refreq*{constant}.
 This change builds upon the previous one to limit the sharder's resource usage and to reduce the API request volume caused by assignments and coordination.
 
 The evolved design achieves these goals by performing assignments in the API admission phase, which replaces the sharder's costly watch cache for sharded objects.
-Considering the sharding-related events that need to be handled by the sharding mechanism ([@sec:sharding-events]), the watch cache for sharded objects is only needed to detect and handle evt. \ref{evt:new-object}, i.e., when new unassigned objects are created, or existing objects are drained.
+Considering the sharding-related events that need to be handled by the sharding mechanism ([@sec:sharding-events]), the watch cache for sharded objects is only needed to detect and handle \refevt{new-object}, i.e., when new unassigned objects are created, or existing objects are drained.
 This event always involves a mutating API request for the sharded object itself.
 Hence, the admission control logic can be leveraged to perform actions in response to the request instead of triggering sharder reconciliations in response to a watch event.
 
@@ -142,7 +142,7 @@ Hence, the admission webhook is more flexible but adds latency to API requests.
 The sharder is responsible for setting up the `MutatingWebhookConfigurations` as needed.
 For this, the `ClusterRing` controller creates one webhook configuration for each ring with a matching list of sharded API resources.
 
-The sharder still watches shard leases for detecting ring state changes (evt. \ref{evt:new-shard} and \ref{evt:shard-down}).
+The sharder still watches shard leases for detecting ring state changes (\refevt{new-shard}, \refevt*{shard-down}).
 It runs a controller that accordingly handles both events as described in [@sec:sharding-events].
 For this, the sharder does not need to watch the sharded objects themselves.
 Instead, it can use lightweight metadata-only list requests whenever object assignments of a `ClusterRing` need to be reconciled.

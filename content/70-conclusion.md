@@ -10,23 +10,23 @@ The key properties of the presented work are:
 
 - Controller instances (shards) announce themselves to the sharder via individual heartbeat resources.
 The sharder determines the availability of shards and detects failures based on this membership information to perform automatic failovers and rebalancing as soon as the set of available shards changes.
-This makes the mechanism suitable for highly dynamic environments (req. \ref{req:membership}).
+This makes the mechanism suitable for highly dynamic environments (\refreq{membership}).
 - A consistent hashing algorithm achieves a balanced distribution of API objects for all ring sizes while minimizing movements on shard changes.
-The partitioning mechanism considers object ownership so that controlled objects are assigned to the same shard as their owner (req. \ref{req:partitioning}).
+The partitioning mechanism considers object ownership so that controlled objects are assigned to the same shard as their owner (\refreq{partitioning}).
 - Coordination is achieved by using label-based object assignments.
 Assignments are performed by the sharder transparently and automatically using a mutating webhook and controller.
 Adding corresponding label selectors in the shards distributes the reconciliation work and watch caches' footprint across shards.
-None of the existing API semantics are changed, and clients need not be aware of the sharded architecture (req. \ref{req:coordination}).
+None of the existing API semantics are changed, and clients need not be aware of the sharded architecture (\refreq{coordination}).
 - Following a dedicated handover protocol prevents concurrent reconciliations in multiple controller instances.
-It ensures that a single instance is responsible for each object at any given time without locking reconciliations on a global level (req. \ref{req:concurrency}).
-- The load capacity of the overall system is increased almost linearly with every added controller instance, as shown in [@sec:eval-scale-out] (req. \ref{req:scale-out}).
+It ensures that a single instance is responsible for each object at any given time without locking reconciliations on a global level (\refreq{concurrency}).
+- The load capacity of the overall system is increased almost linearly with every added controller instance, as shown in [@sec:eval-scale-out] (\refreq{scale-out}).
 - The core logic of the sharding mechanism is implemented in the dedicated sharder component, which can be installed easily into any cluster.
 Sharded controllers can be developed in any programming language, and only a few aspects need to be realized to enable controller sharding.
-Reusable example implementations of the shard components in Go are presented in [@sec:impl-shard] and can be added for other programming languages as well (req. \ref{req:reusable}).
+Reusable example implementations of the shard components in Go are presented in [@sec:impl-shard] and can be added for other programming languages as well (\refreq{reusable}).
 - The sharding mechanism incurs an overhead compared to a singleton controller setup.
-However, the overhead is constant and independent of the controller's load, as shown in [@sec:eval-comparison] (req. \ref{req:constant}).
+However, the overhead is constant and independent of the controller's load, as shown in [@sec:eval-comparison] (\refreq{constant}).
 - The sharding mechanism relies only on existing Kubernetes API and controller machinery.
-It does not require managing external components or infrastructure other than controllers, keeping the added complexity low (req. \ref{req:ecosystem}).
+It does not require managing external components or infrastructure other than controllers, keeping the added complexity low (\refreq{ecosystem}).
 
 To conclude, the systematic evaluation has shown that all identified requirements listed in chapter [-@sec:requirements] are fulfilled by the presented design and implementation.
 As the mechanism can be easily applied to existing controllers, it opens opportunities for adopting the presented work, discussion, and collaboration in the open-source community.
