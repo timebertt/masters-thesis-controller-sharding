@@ -286,6 +286,7 @@ This gives a better estimation of the actual memory requirements of the controll
 The Go runtime does not immediately release heap memory freed by garbage collection back to the operating system.
 Hence, the process can hold more memory of the system than the program needs, also due to the runtime's batch-based memory allocation.
 The query in this evaluation subtracts all released, unused, and free memory from the total amount of memory allocated by the process.
+[@tsoukalos2021mastering]
 
 A unique ID is attached to every run and added as the `run_id` label to the corresponding metrics to distinguish between individual experiment runs.
 The experiment tool is deployed as a Kubernetes `Job`, and the UID of the executing `Pod` is used as the run's ID.
@@ -298,7 +299,7 @@ It shows the generated load in both dimensions and the resulting SLIs ([@fig:das
 The dashboard calculates the visualized SLIs as rolling percentiles, e.g. over 1 minute.
 Additionally, it displays the CPU, memory, and network usage of the sharder and webhosting-operator pods.
 
-![Experiments Grafana dashboard](../assets/dashboard-experiments.png){#fig:dashboard-experiments}
+![Grafana experiments dashboard](../assets/dashboard-experiments.png){#fig:dashboard-experiments}
 
 ## Experiments
 
@@ -397,7 +398,7 @@ However, the buckets' upper bounds are aligned with the SLOs for this evaluation
 This means that for every SLI, there is a bucket with the upper bound set to the corresponding SLO.
 As interpolation is only applied between the bucket boundaries, the estimated SLI will grow above the SLO when the actual SLI grows above the SLO and vice-versa.
 
-![Cumulative controller SLOs per instance count](../results/scale-out/slis.pdf){#fig:scale-out-slis}
+![Cumulative controller SLIs in scale-out scenario](../results/scale-out/slis.pdf){#fig:scale-out-slis}
 
 After the experiment, the control plane SLOs are verified, and the measurements are retrieved from Prometheus.
 For each instance count, the last timestamp where the measured SLIs still satisfied the defined SLOs is determined ([@fig:scale-out-slis]).
@@ -405,7 +406,7 @@ This timestamp is then used to look up values for both load dimensions.
 The resulting value represents the maximum load capacity of each controller setup ([@fig:scale-out-capacity]).
 Note that the load capacity values cannot be interpreted as absolute values but only relative to other values of the same load test.
 
-![Load capacity increase with added instances](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
+![Load capacity increase with added instances in scale-out scenario](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
 
 The results show that adding more controller instances brings more performance and increases the maximum load capacity of the system.
 The load capacity grows almost linearly with the number of added instances, so the setup fulfills req. \ref{req:scale-out}.

@@ -39,7 +39,7 @@ Hence, these approaches are not suited for generally making Kubernetes controlle
 
 ## Study Project {#sec:related-study-project}
 
-![Study project sharding architecture [@studyproject]](../assets/study-project-design.pdf)
+![Study project controller sharding architecture [@studyproject]](../assets/study-project-design.pdf)
 
 A previous study project [@studyproject] presents a design and implementation for sharding Kubernetes controllers by leveraging established sharding approaches from distributed databases.
 The design introduces a sharder that runs in one of the controller instances as determined by a lease-based leader election mechanism.
@@ -92,7 +92,7 @@ Before reconciling an object, the reconciler checks if its instance is responsib
 Only if it is responsible can it continue with the usual reconciliation.
 [@mooresharding]
 
-![Failover with leader election per controller and bucket [@mooresharding]](../assets/reconciler-buckets.pdf)
+![Failover with leader election per controller and bucket in knative [@mooresharding]](../assets/reconciler-buckets.pdf)
 
 To realize these mechanisms, all controller instances run all informers.
 I.e., they watch all objects regardless of whether they need to reconcile them.
@@ -193,7 +193,7 @@ All shard instances use a watch label selector with the `scheduled-shard-id` lab
 With this, the reconciliation work and watch cache's resource consumption are distributed across the shard instances.
 [@kubevela]
 
-![Sharding architecture in KubeVela [@kubevela]](../assets/kubevela-sharding.jpg)
+![KubeVela application controller sharding architecture [@kubevela]](../assets/kubevela-sharding.jpg)
 
 While the application webhook dynamically discovers the set of available shard instances, there are no automatic reassignments when a new instance is added, or an existing one is removed.
 Most importantly, when a shard instance fails, the assigned applications are not reassigned and no longer reconciled.

@@ -66,7 +66,7 @@ status:
     type: Ready
 ```
 
-: Example ClusterRing resource with status {#lst:clusterring-status}
+: Example ClusterRing with status {#lst:clusterring-status}
 
 As the resource name suggests, the `ClusterRing` resource is cluster-scoped.
 I.e., the object itself does not reside in a namespace and configures behavior on a cluster-global level.
@@ -109,7 +109,7 @@ For increased observability, the shard lease controller writes the determined st
 |dead|not held by shard (released or acquired by sharder)|
 |orphaned|not held by shard, expired at least 1 minute ago|
 
-: Shard states [@studyproject] {#tbl:shard-states}
+: Shard lease states [@studyproject] {#tbl:shard-states}
 
 The controller watches the `Lease` objects for relevant changes to ensure responsiveness.
 However, it also revisits `Leases` after a specific duration when their state would change if no update event occurs.
@@ -357,7 +357,7 @@ func run() error {
 drain.alpha.sharding.timebertt.dev/clusterring-<hash>-<clusterring-name>
 ```
 
-: Ring-specific shard label pattern {#lst:drain-label}
+: Ring-specific drain label pattern {#lst:drain-label}
 
 Finally, the sharded controllers must comply with the handover protocol initiated by the sharder.
 When the sharder needs to move an object from an available shard to another for rebalancing, it first adds the `drain` label to instruct the currently responsible shard to stop reconciling the object.

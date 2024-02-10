@@ -42,7 +42,7 @@ If there is no available shard, the assignment is deferred until a new shard bec
 
 ## Architecture
 
-![Sharding architecture](../draw/architecture.pdf)
+![Evolved controller sharding architecture](../draw/architecture.pdf)
 
 The evolved design keeps the sharding mechanisms inspired by distributed databases for membership, failure detection, and partitioning, as presented in the study project.
 I.e., individual controller instances announce themselves to the sharder by maintaining a shard lease that also serves the purpose of detecting shard failures.
@@ -91,7 +91,7 @@ spec:
       resource: configmaps
 ```
 
-: Example ClusterRing resource {#lst:clusterring}
+: Example ClusterRing {#lst:clusterring}
 
 The sharded controller deployment only runs the actual controllers themselves, i.e., the actual shards.
 Nevertheless, the controller deployment is configured with the corresponding `ClusterRing` to use matching names.
