@@ -86,7 +86,6 @@ Note that the API server always retrieves the complete list of objects from etcd
 It subsequently filters the objects or events based on the specified label criteria and transmits the filtered list to the client.
 This approach reduces the transferred data size, the effort for encoding and decoding in the API server and client, and the needed memory on the client side.
 However, it neither reduces the transferred data size between the etcd and API server nor the effort for processing objects and events in the API server.
-\todo{watch events with label selectors on label changes}
 
 Additionally, field selectors offer another option for filtering objects based on specific field values.
 However, this mechanism is only available for built-in resources and resources served by extension API servers [@studyproject].
