@@ -310,8 +310,8 @@ First, it is required to devise how to quantify the scale of or load on a specif
 As controllers are an essential part of Kubernetes, the load is quantified in a subset of the scaling dimensions of Kubernetes itself.
 For a given controller setup, the load has two dimensions:
 
-1. The number of API objects that the controller watches and reconciles.
-2. The churn rate of API objects, i.e., the rate of object creations, updates, and deletions.
+1. \dimn{count}The number of API objects that the controller watches and reconciles.
+2. \dimn{churn}The churn rate of API objects, i.e., the rate of object creations, updates, and deletions.
 
 Next, the key SLIs and corresponding SLOs of a controller setup need to be specified.
 As a prerequisite for these performance indicators to be meaningful, the official Kubernetes SLOs need to be satisfied by the cluster that the controllers are running on.
@@ -346,10 +346,10 @@ Other important parameters are the controller's compute resources and the number
 While Kubernetes and its controllers are already scalable to a good extent, there are limitations to scaling controllers inherent in the leader election mechanism.
 Understanding how a controller's load dimensions, SLIs, and resource usage are related is essential to discuss these limitations.
 
-When increasing the load by adding more objects, the controller's watch cache requires more memory for caching the additional objects.
+When increasing the load by adding more objects (\refdimn{count}), the controller's watch cache requires more memory for caching the additional objects.
 This doesn't have a direct impact on the SLIs.
 However, when consuming more memory than available, the controller might fail due to out-of-memory faults.
-When the load on a controller grows by increasing the object churn rate, more watch events for relevant objects are transferred over the network.
+When the load on a controller grows by increasing the object churn rate (\refdimn{churn}), more watch events for relevant objects are transferred over the network.
 The processing of the additional watch events also results in a higher CPU usage for decoding and for performing reconciliations.
 If the number of worker routines is not high enough to facilitate the needed rate of reconciliations, the queue time (SLI 1) increases.
 Also, if performing reconciliations is computationally intensive, the extra CPU usage might exhaust the available CPU cycles, increasing the reconciliation latency (SLI 2).

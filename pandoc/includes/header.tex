@@ -304,6 +304,22 @@ evt. \ref{evt:#1}%
 }
 \makeatother
 
+% dimensions
+\newcounter{dimn}
+\newcommand{\dimn}[1]{%
+\refstepcounter{dimn}%
+\label{dimn:#1}%
+}
+\makeatletter
+\newcommand{\refdimn}{\@ifstar\refdimn@star\refdimn@nostar}
+\newcommand{\refdimn@nostar}[1]{%
+dimension \ref{dimn:#1}%
+}
+\newcommand{\refdimn@star}[1]{%
+\ref{dimn:#1}%
+}
+\makeatother
+
 %%% spacing
 \usepackage{setspace}
 \onehalfspacing % spacing between lines

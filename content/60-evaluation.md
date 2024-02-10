@@ -13,7 +13,7 @@ To evaluate the new external sharder mechanism presented in this thesis, the web
 With this, the webhosting-operator can be deployed in three different configurations: singleton (sharding disabled), internal sharder (design from study project), and external sharder (design from this thesis).
 This allows for the comparison of all three setups using load test experiments.
 
-As described in [@sec:controller-scalability], the scale of controller setups can be described in two dimensions: the number of API objects and the churn rate of API objects.
+As described in [@sec:controller-scalability], the scale of controller setups can be described in two dimensions: the number of API objects (\refdimn{count}) and the churn rate of API objects (\refdimn{churn}).
 The webhosting-operator's main resource are `Website` objects, which control `Deployment`, `ConfigMap`, `Service`, and `Ingress` objects.
 Accordingly, increasing the load on the webhosting-operator involves creating many `Website` objects and triggering `Website` reconciliations.
 Additionally, changing the `Theme` referenced by a `Website`, also triggers a `Website` reconciliation.
@@ -156,9 +156,9 @@ I.e., SLIs are not measured per cluster-day but only for the load test duration.
 
 Next, experiments record the load on the evaluated controller setup to determine the load capacity of a setup using a given resource configuration and to allow for the comparison of results of different scenarios.
 For this, both load dimensions of controllers defined in [@sec:controller-scalability] are measured for the tested controller.
-Applied to the webhosting-opperator, the number of objects watched and reconciled by the controller (dimension 1) is the number of `Website` objects in the cluster.
+Applied to the webhosting-opperator, the number of objects watched and reconciled by the controller (\refdimn{count}) is the number of `Website` objects in the cluster.
 This can be measured using the `kube_website_info` metric exposed for every `Website` object by the operator.
-On the other hand, the churn rate of API objects (dimension 2) for the webhosting-operator is the rate at which clients create, update, and delete `Website` objects.
+On the other hand, the churn rate of API objects (\refdimn{churn}) for the webhosting-operator is the rate at which clients create, update, and delete `Website` objects.
 In experiments, `Website` reconciliations are triggered by mutating the `spec.theme` field.
 The experiment tool builds upon controller-runtime, and different controllers perform individual actions of scenarios in the form of reconciliations.
 Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
@@ -323,7 +323,7 @@ For this, it runs three controllers:
 - The `website-mutator` updates each `Website` spec every minute.
 
 With this, the generated load slowly increases over 15 minutes.
-The number of objects (dimension 1) grows to roughly 9,000, while the churn rate grows to roughly 160 changes per second ([@fig:basic-load]).
+The number of objects (\refdimn{count}) grows to roughly 9,000, while the churn rate (\refdimn{churn}) grows to roughly 160 changes per second ([@fig:basic-load]).
 
 ![Generated load in basic scenario](../results/basic/load.pdf){#fig:basic-load}
 
@@ -356,7 +356,7 @@ The system is scalable if the load capacity can be increased by adding more reso
 The system is said to be horizontally scalable if resources are added as additional instances without adding resources to individual instances.
 
 In the `scale-out` scenario, the experiment tool generates a load with a high churn rate over 15 minutes.
-The number of objects (dimension 1) grows up to roughly 9,000, and the churn rate grows up to roughly 300 changes per second ([@fig:scale-out-load]):
+The number of objects (\refdimn{count}) grows up to roughly 9,000, and the churn rate (\refdimn{churn}) grows up to roughly 300 changes per second ([@fig:scale-out-load]):
 
 - The `website-generator` creates 10 random `Websites` per second.
 - The `website-mutator` updates each `Website` spec twice per minute.
