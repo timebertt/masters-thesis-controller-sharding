@@ -1,5 +1,5 @@
 queries:
-- name: latency-mutating # SLO 1
+- name: latency-mutating # SLO I
   type: instant
   slo: 1
   query: |
@@ -10,7 +10,7 @@ queries:
         subresource!~"log|exec|portforward|attach|proxy"
       }[$__range]
     ))) > 0
-- name: latency-read-resource # SLO 2 - resource scope
+- name: latency-read-resource # SLO II - resource scope
   type: instant
   slo: 1
   query: |
@@ -21,7 +21,7 @@ queries:
         subresource!~"log|exec|portforward|attach|proxy"
       }[$__range]
     ))) > 0
-- name: latency-read-namespace-cluster # SLO 2 - namespace and cluster scope
+- name: latency-read-namespace-cluster # SLO II - namespace and cluster scope
   type: instant
   slo: 30
   query: |
