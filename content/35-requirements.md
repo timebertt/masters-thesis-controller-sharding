@@ -10,7 +10,7 @@ In other words, the traditional leader election setup that elects a global leade
 If reconciliation work can be distributed across multiple controller instances, the system can be scaled horizontally.
 Another mechanism is needed to prevent concurrent reconciliations that does not include global locking.
 
-This thesis builds on the requirements posted in the previous study project (req. 1–5) [@studyproject].
+This thesis builds on the requirements posted in the previous study project (req. \refreq*{membership}–\refreq*{scale-out}) [@studyproject].
 While the presented work already fulfills the basic requirements, the evaluation revealed significant drawbacks and limitations that this thesis needs to resolve to make controllers horizontally scalable ([@sec:related-study-project]).
 The set of requirements is extended in this thesis to address the identified limitations accordingly.
 

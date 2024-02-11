@@ -26,8 +26,8 @@ The Kubernetes community has extensively picked up the operator pattern, and man
 
 With these projects gaining popularity, large-scale Kubernetes and controller-based deployments are becoming more common.
 The Kubernetes community recognizes this demand and ensures that the Kubernetes core components scale well.
-For this, the special interest group sig-scalability defines scalability thresholds (e.g., 5,000 nodes) and verifies that Kubernetes performs well within the recommended thresholds by frequently running automated performance and scalability tests.
-However, sig-scalability is only responsible for ensuring high scalability of the Kubernetes core components.
+For this, the special interest group scalability (SIG scalability) defines scalability thresholds (e.g., 5,000 nodes) and verifies that Kubernetes performs well within the recommended thresholds by frequently running automated performance and scalability tests.
+However, SIG scalability is only responsible for ensuring high scalability of the Kubernetes core components.
 [@k8scommunity]
 
 External components like custom controllers or operators are not included in the scalability considerations and guarantees.
