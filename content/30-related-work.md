@@ -181,7 +181,7 @@ However, this is specific to Argo CD's application controller, and the mechanism
 ## KubeVela
 
 KubeVela also allows running multiple instances of its core controller responsible for deploying applications to support large-scale use cases.
-For this, users deploy multiple instances of the vela-core – one in master mode (primary) and the others in slave mode (shards).
+For this, users deploy multiple instances of vela-core – one in master mode (primary) and the others in slave mode (shards).
 The primary instance runs all controllers and webhooks and schedules applications to one of the available shard instances.
 On the other hand, the shard instances are labeled with a unique `shard-id` label and only run the application controller.
 [@kubevela]

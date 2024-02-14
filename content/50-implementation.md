@@ -94,9 +94,9 @@ It reports the total number, the number of available shards, and the `Ready` con
 
 The shard lease controller is responsible for detecting instance failures based on the `Lease` objects that every shard maintains.
 Like in the study project implementation, it watches all shard `Leases` and determines the state of each shard following the conditions in [@tbl:shard-states].
-When a shard becomes uncertain, it tries to acquire the `Lease` to ensure connectivity with the API server.
-Only if the controller can acquire the `Lease` is the shard considered unavailable and removed from partitioning.
-I.e., all shards in states ready, expired, and uncertain are considered available and included in partitioning.
+When a shard becomes uncertain, the shard lease controller tries to acquire the `Lease` to ensure connectivity with the API server.
+Only if it can acquire the `Lease` is the shard considered unavailable and removed from partitioning.
+I.e., all shards in states ready, expired, and uncertain are available for object assignments.
 Orphaned `Leases` are garbage collected by the shard lease controller.
 For increased observability, the shard lease controller writes the determined state to the `alpha.sharding.timebertt.dev/state` label on the respective `Lease` objects.
 [@studyproject]
@@ -113,14 +113,14 @@ For increased observability, the shard lease controller writes the determined st
 
 The controller watches the `Lease` objects for relevant changes to ensure responsiveness.
 However, it also revisits `Leases` after a specific duration when their state would change if no update event occurs.
-E.g., the transition from ready to expired happens if the shard fails to renew the `Lease` in time, which does not incur a watch update event.
+E.g., the transition from ready to expired happens if the shard fails to renew the `Lease` in time, which does not incur a watch event.
 For this, the controller calculates the time until the transition would occur and revisits the `Lease` after this duration.
 It also watches `ClusterRings` and triggers reconciliations for all `Lease` objects belonging to a ring, e.g., to ensure correct sharding decisions when the `ClusterRing` object is created after the shard `Leases`.
 
-For partitioning, the sharder reads all shard `Leases` of a given `ClusterRing` from its watch cache and constructs a consistent hash ring of all available shards.
+When the sharder's webhook is called, it needs to determine the desired shard for an object based on the discovered membership information.
+The sharder reads all shard `Leases` of a given `ClusterRing` from its watch cache and constructs a consistent hash ring of all available shards.
 In this process, `Leases` are always read from the cache, and a new ring is constructed every time instead of keeping a single hash ring up-to-date.
-This ensures consistency with the cache and watch events seen by the individual controllers.
-Reading from a shared hash ring, which can be considered another cache layer, can lead to race conditions where the hash ring still needs to be updated to reflect the state changes for which a controller has been triggered.
+This ensures consistency with the cache and watch events seen by the individual controllers to avoid race conditions.
 
 The partitioning key of an object is determined based on whether it is configured as a main or controlled resource in the corresponding `ClusterRing`.
 For main resources, the key is composed of `apiVersion`, `kind`, `namespace`, and `name`.
@@ -374,15 +374,13 @@ import (
 func add(mgr manager.Manager, clusterRingName, shardName string) error {
   var r reconcile.Reconciler
 
-  // Use the shardcontroller package as helpers for:
-  // - a predicate that triggers when the drain label is present
-  //   (even if the actual predicates don't trigger)
-  // - wrapping the actual reconciler in a reconciler that handles the drain
-  //   operation
+  // Use pkg/shard/controller as a helper when building controllers:
   return builder.ControllerManagedBy(mgr).
     Named("example").
     For(
       &corev1.ConfigMap{}, builder.WithPredicates(
+        // wrap the predicate to trigger when the drain label is present
+        // (even if the actual predicates don't trigger)
         shardcontroller.Predicate(
           clusterRingName, shardName, MyConfigMapPredicate(),
         ),
@@ -390,6 +388,7 @@ func add(mgr manager.Manager, clusterRingName, shardName string) error {
     ).
     Owns(&corev1.Secret{}, builder.WithPredicates(MySecretPredicate())).
     Complete(
+      // wrap the reconciler to handle the drain operation
       shardcontroller.NewShardedReconciler(mgr).
         For(&corev1.ConfigMap{}). // must match the kind in For() above
         InClusterRing(clusterRingName).

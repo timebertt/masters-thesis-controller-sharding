@@ -333,7 +333,8 @@ Additional checks are performed to ensure the system is not limited anywhere and
 If all of these prerequisites are fulfilled, the resulting resource usage of the webhosting-operator and sharder are recorded to deduce how many resources are needed for sustaining the generated load ([@fig:basic-cpu; @fig:basic-memory; @fig:basic-network]).
 
 By default, the webhosting-operator runs 15 concurrent workers for the `website` controller.
-If the webhosting-operator is deployed as a singleton controller, it runs 50 workers for the `website` controller to allow for the comparison of experiment runs of sharded and non-sharded setups with the same load.
+If the webhosting-operator is deployed as a singleton controller, it runs more workers for the `website` controller to allow for the comparison of experiment runs of sharded and non-sharded setups with the same load.
+Here, 50 workers for the `website` controller are configured for the singleton controller.
 If the internal sharder is enabled, the leader instance runs 5 workers for the `shardlease` controller and 10 workers for the `sharder` controllers, respectively.
 
 ![CPU usage by pod in basic scenario](../results/basic/cpu.pdf){#fig:basic-cpu}
@@ -352,8 +353,8 @@ With this, the external sharder setup fulfills \refreq{constant}, while the inte
 
 The second experiment evaluates the horizontal scalability of the external sharder design and implementation.
 As described in [@sec:kubernetes-scalability], measuring the scalability of a system involves determining the maximum load capacity of different resource configurations.
-The system is scalable if the load capacity can be increased by adding more resources.
-The system is said to be horizontally scalable if resources are added as additional instances without adding resources to individual instances.
+The system is scalable if adding more resources increases the load capacity.
+If resources are added as additional instances without adding resources to individual instances, the system is horizontally scalable.
 
 In the `scale-out` scenario, the experiment tool generates a load with a high churn rate over 15 minutes.
 The number of objects (\refdimn{count}) grows up to roughly 9,000, and the churn rate (\refdimn{churn}) grows up to roughly 300 changes per second ([@fig:scale-out-load]):

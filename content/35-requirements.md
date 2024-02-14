@@ -11,7 +11,7 @@ If reconciliation work can be distributed across multiple controller instances, 
 Another mechanism is needed to prevent concurrent reconciliations that does not include global locking.
 
 This thesis builds on the requirements posted in the previous study project (req. \refreq*{membership}–\refreq*{scale-out}) [@studyproject].
-While the presented work already fulfills the basic requirements, the evaluation revealed significant drawbacks and limitations that this thesis needs to resolve to make controllers horizontally scalable ([@sec:related-study-project]).
+While the presented work already fulfills the basic requirements, the evaluation revealed significant drawbacks and limitations that this thesis must resolve to make controllers horizontally scalable ([@sec:related-study-project]).
 The set of requirements is extended in this thesis to address the identified limitations accordingly.
 
 \subsection*{\req{membership}Membership and Failure Detection}
@@ -20,9 +20,9 @@ As the foundation, the sharding mechanism needs to populate information about th
 In order to distribute object ownership across instances, there must be a mechanism for discovering available members of the sharded setup (controller ring).
 Instance failures need to be detected to restore the system's functionality automatically.
 
-As controllers are deployed in highly dynamic environments, the sharding mechanism must expect that instances are restarted, added, or removed frequently and can fail at any time.
-Furthermore, instances will typically be replaced in quick succession during rolling updates.
+As controllers are deployed in highly dynamic environments, the sharding mechanism must expect that instances are restarted, added, or removed frequently, e.g., during rolling updates or for facilitating automatic scaling.
 Hence, the sharding mechanism should handle voluntary disruptions explicitly to achieve fast rebalancing during scale-down and rolling updates.
+Furthermore, instances can fail involuntarily at any time, which must also be handled by the sharding mechanism.
 [@studyproject]
 
 \subsection*{\req{partitioning}Partitioning}

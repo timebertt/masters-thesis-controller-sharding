@@ -27,11 +27,11 @@ The Kubernetes community has extensively picked up the operator pattern, and man
 With these projects gaining popularity, large-scale Kubernetes and controller-based deployments are becoming more common.
 The Kubernetes community recognizes this demand and ensures that the Kubernetes core components scale well.
 For this, the special interest group scalability (SIG scalability) defines scalability thresholds (e.g., 5,000 nodes) and verifies that Kubernetes performs well within the recommended thresholds by frequently running automated performance and scalability tests.
-However, SIG scalability is only responsible for ensuring high scalability of the Kubernetes core components.
+However, SIG scalability is only responsible for ensuring high scalability of Kubernetes core components.
 [@k8scommunity]
 
-External components like custom controllers or operators are not included in the scalability considerations and guarantees.
-Still, the used custom controllers must also be scalable for these large-scale deployments to work reliably.
+External components like custom controllers or operators are not included in the community's scalability considerations and guarantees.
+Still, custom controllers must also be scalable for these large-scale deployments to work reliably.
 Compared to Kubernetes core controllers, custom controllers typically facilitate heavier reconciliation processes, increasing the demand for a scalable architecture.
 [@kubevela]
 
@@ -70,7 +70,7 @@ First, this thesis describes all relevant fundamentals in detail (chapter [-@sec
 These include the most important aspects of Kubernetes API and controller machinery ([@sec:apimachinery; @sec:controller-machinery]) as well as leader election principles ([@sec:leader-election]).
 Next, a general definition for the scalability of a distributed system as defined in standard literature is presented, and how the scalability of Kubernetes is defined and measured ([@sec:kubernetes-scalability]).
 [@Sec:controller-scalability] outlines how the scale and performance of a controller setup can be measured.
-Based on this, [@sec:scalability-limitations] analyzes the current scalability limitations of Kubernetes controllers in detail.
+Based on this, [@sec:scalability-limitations] analyzes current scalability limitations of Kubernetes controllers in detail.
 
 Afterward, this thesis examines existing efforts related to sharding in Kubernetes controllers (chapter [-@sec:related-work]).
 Primarily, it assesses the strengths and drawbacks of the design presented in the previous study project ([@sec:related-study-project]).
@@ -79,7 +79,7 @@ Following this, an evolved design is developed step by step in chapter [-@sec:de
 It is based on the design presented in the study project but addresses all additional requirements from the previous chapter.
 
 The implementation of the presented design is described in chapter [-@sec:implementation].
-In addition to explaining how the external sharding components are implemented ([@sec:impl-clusterring; @sec:impl-sharder]), the chapter gives instructions for implementing the shard components in existing controllers ([@sec:impl-shard]).
+In addition to explaining how external sharding components are implemented ([@sec:impl-clusterring; @sec:impl-sharder]), the chapter gives instructions for implementing the shard components in existing controllers ([@sec:impl-shard]).
 [@Sec:impl-setup] presents an example setup that combines all implemented components into a fully functioning sharded controller setup.
 Next, the implementation is evaluated in systematic load test experiments (chapter [-@sec:evaluation]).
 After precisely describing the experiment setup ([@sec:experiment-setup]) and how measurements are performed ([@sec:measurements]), different experiment scenarios are executed ([@sec:experiments]), and their results are discussed ([@sec:discussion]).

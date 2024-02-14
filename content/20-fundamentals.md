@@ -6,9 +6,9 @@ Kubernetes is an open-source system for orchestrating container-based applicatio
 It is an API-centric and declarative system in which clients specify the desired state of applications and infrastructure instead of managing them via imperative commands.
 This approach is essential to Kubernetes' reliability, scalability, and manageability. [@k8sdesign]
 
-The architecture of Kubernetes is divided into two parts: the control plane and the data plane.
+The architecture of Kubernetes is divided into two parts: control plane and data plane.
 The control plane oversees the cluster's state and orchestrates various operations, while the data plane executes workload containers and serves application traffic.
-The core of the control plane is the API server, which stores the cluster's metadata and state in etcd, a highly-available key-value store that acts as the source of truth for the entire cluster [@etcddocs].
+The core of the control plane is the API server, which stores cluster metadata and state in etcd, a highly-available key-value store that acts as the source of truth for the entire cluster [@etcddocs].
 The state is specified and managed in the form of objects via RESTful [@fielding2000architectural] HTTP endpoints (resources).
 All human and machine clients interact with the system through these resources. [@k8sdocs]
 
@@ -83,7 +83,7 @@ This can be used to retrieve a specific recent revision of objects or the latest
 
 Clients can add label selectors to list and watch requests for filtering API objects based on key-value pairs in their `metadata.labels`.
 Note that the API server always retrieves the complete list of objects from etcd or events from its watch cache.
-It subsequently filters the objects or events based on the specified label criteria and transmits the filtered list to the client.
+It subsequently filters objects or events based on the specified label criteria and transmits a filtered list to the client.
 This approach reduces the transferred data size, the effort for encoding and decoding in the API server and client, and the needed memory on the client side.
 However, it neither reduces the transferred data size between the etcd and API server nor the effort for processing objects and events in the API server.
 
@@ -106,7 +106,7 @@ Apart from admission plugins for built-in resources, the admission control logic
 These webhooks can be applied to both built-in and custom resources, and can be registered through `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects.
 A webhook configuration defines which server should be contacted for specific requests and allows selection based on the requested resource, the operation type, as well as namespace and object labels.
 When a client performs a relevant request, the API server dispatches an `AdmissionReview` object including the requested object and relevant request metadata to the designated webhook server.
-After processing the `AdmissionReview` object, the webhook server responds with a validation result and in the case of mutating webhooks, it may include optional patches to the object.
+After processing the `AdmissionReview` object, the webhook server responds with a validation result and in case of mutating webhooks, it may include patches to the object.
 The API server considers the returned validation result and optionally applies the returned patches to the object before storing the updated object in etcd. [@k8sdocs]
 
 All Kubernetes API objects can reference owning objects for establishing relationships between objects.
@@ -136,7 +136,7 @@ As such, controllers are stateless components, as their state is persisted exter
 If a controller restarts or crashes, it can pick up earlier work by reading the current state from the API server again.
 
 The core components of Kubernetes controllers are the watch cache, event handlers, work queue, and worker routines.
-A controller's cache is responsible for monitoring the object type on the API server, notifying the controller of changes to the objects, and maintaining the objects in memory as an indexed store.
+A controller's cache is responsible for monitoring the object type on the API server, notifying the controller of changes to the objects, and maintaining object copies in memory as an indexed store.
 For this, the controller initiates a reflector, which lists and watches the specified object type, emitting delta events added to a queue.
 Subsequently, an informer reads events from the queue, updating the store with changed objects.
 The flat key-value store has additional indices to increase the performance of frequently used namespaced queries or queries with field selectors.
@@ -191,7 +191,7 @@ Controllers always read the object for the enqueued object key from the watch ca
 Furthermore, using filtered watches enhances the system's scalability by reducing the volume of data processed and stored by controllers.
 For instance, the kubelet employs a field selector for the `spec.nodeName` field in `Pods` to filter watch requests for `Pods` running on the kubelet's `Node`.
 
-In situations with a high rate of changes or latency of watch connections, controllers might read an outdated version of the object from the cache.
+In situations with a high rate of changes or latency of watch connections, controllers might read an outdated version of the object from their cache.
 When this happens, the controller might run into a conflict error when updating the object on the API server due the usage of optimistic concurrency control.
 In case of errors like conflicts, controllers rely on an exponential backoff mechanism to retry reconciliations until the cache is up-to-date with the current state and the reconciliation can be performed successfully.
 This ensures eventual consistency while reducing the average amount of API requests and network transfers needed for reconciliations.
@@ -230,8 +230,8 @@ spec:
 
 : Example Lease {#lst:lease}
 
-The Lease object is always acquired for a specified duration, as defined in the `spec.leaseDurationSeconds`.
-The leader must continually renew the lease to maintain the leadership.
+The Lease object is always acquired for a specified duration, as defined in `spec.leaseDurationSeconds`.
+The leader must continuously renew the lease to keep its leadership.
 If the leader fails to renew the lease, it must stop all reconciliations.
 When the lease expires, other instances are permitted to contend for leadership, resulting in a leadership change.
 When an instance is terminated, such as during rolling updates, the leader can voluntarily release the lease to speed up leadership handovers and minimize disruption.
@@ -273,7 +273,7 @@ In order to evaluate the scalability of controller setups in the scope of this t
 The load on or scale of a Kubernetes cluster has many dimensions, for example: number of nodes, number of pods, pod churn, API request rate.
 Evaluating the scalability of Kubernetes in every dimension is difficult and costly.
 Hence, the community has declared a set of thresholds[^k8s-thresholds] for these load dimensions together, which can be considered as the limits for scaling a single Kubernetes cluster.
-Most thresholds define a maximum supported number of API objects, and others define a maximum supported `Pod` churn rate or API request rate.
+Most thresholds define a maximum supported number of API objects, while others define a maximum supported `Pod` churn rate or API request rate.
 As long as a cluster is configured correctly and the load is kept within these limits, the cluster is guaranteed work reliably and perform adequately.
 In Kubernetes development, regular load tests [@perftests] put test clusters under load as high as the declared thresholds to detect performance or scalability regressions.
 [@k8scommunity]
@@ -307,7 +307,7 @@ These SLIs include in-cluster network programming and execution latency, in-clus
 Based on the above definition of Kubernetes scalability, a definition for the scalability of Kubernetes controllers is derived.
 In this context, "controller setup" refers to a set of coherent controller instances.
 First, it is required to devise how to quantify the scale of or load on a specific controller setup.
-As controllers are an essential part of Kubernetes, the load is quantified in a subset of the scaling dimensions of Kubernetes itself.
+As controllers are an essential part of Kubernetes, the load is quantified in a subset of Kubernetes' scaling dimensions.
 For a given controller setup, the load has two dimensions:
 
 1. \dimn{count}The number of API objects that the controller watches and reconciles.
