@@ -64,6 +64,7 @@ Second, the design limits the overhead of the sharding mechanism to be independe
 A mutating webhook is triggered whenever a client creates a new unassigned object or the currently responsible shard removes the `drain` label from an existing object ([@sec:design-admission]).
 With this, watching the sharded objects is obsolete and allows removing the watch cache that causes a resource usage proportional to the number of objects.
 Additionally, this change reduces the API request volume caused by assignments and coordination.
+Lastly, the webhook handler can be scaled horizontally in contrast to a controller.
 
 ## External Sharder {#sec:design-external}
 

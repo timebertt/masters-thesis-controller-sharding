@@ -33,7 +33,7 @@ As the mechanism can be easily applied to existing controllers, it opens opportu
 Further development is simplified because the implementation does not depend on a specific Kubernetes version.
 
 As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through usage in real-world controllers.
-The implementation's performance during rolling updates, automatic scaling, chaos engineering experiments, and more scenarios should be investigated and enhanced if necessary.
+The implementation's performance during rolling updates, automatic scaling, chaos engineering experiments [@chaos2016], and more scenarios should be investigated and enhanced if necessary.
 For this, feedback from the community on the presented development needs to be collected.
 New requirements shall be collected and explored if certain use cases cannot adopt the presented work.
 For example, it might become necessary to consider other relationships between objects in the partitioning algorithm, e.g., multiple ownership levels.

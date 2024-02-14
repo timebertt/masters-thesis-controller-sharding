@@ -93,7 +93,7 @@ For this, the monitoring setup's Prometheus instance [@prometheusdocs] is used t
 After performing the load tests, the relevant metrics are retrieved from the Prometheus HTTP API using the measure tool [@studyproject] for later analysis and visualization.
 The tool fetches raw time series data and stores the result matrices in CSV-formatted files.
 Additionally, the tool is extended to support instant queries for calculating percentiles over a configured time range.
-This is used to verify that configured SLOs are satisfied during a load test experiment.
+This is used to verify that configured SLOs (`queries[].slo` field, [@lst:k8s-slo-queries]) are satisfied during a load test experiment.
 
 For the measurements to be meaningful, the Kubernetes cluster SLOs themselves, as described in [@sec:kubernetes-scalability], must be satisfied.
 I.e., it must be ensured that the cluster itself, where the controllers are running, is performing well.

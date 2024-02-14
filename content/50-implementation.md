@@ -139,6 +139,7 @@ When the sharder's webhook is called, it needs to determine the desired shard fo
 The sharder reads all shard `Leases` of a given `ClusterRing` from its watch cache and constructs a consistent hash ring of all available shards.
 In this process, `Leases` are always read from the cache, and a new ring is constructed every time instead of keeping a single hash ring up-to-date.
 This ensures consistency with the cache and watch events seen by the individual controllers to avoid race conditions.
+Similar to Cassandra [@cassandradocs], each instance is added to the hash ring multiple times to ensure a balanced distribution (\refreq{partitioning}).
 
 The partitioning key of an object is determined based on whether it is configured as a main or controlled resource in the corresponding `ClusterRing`.
 For main resources, the key is composed of `apiVersion`, `kind`, `namespace`, and `name`.
@@ -155,7 +156,6 @@ metadata:
   name: sharding-clusterring-50d858e0-example
 webhooks:
 - clientConfig:
-    caBundle: LS0t...
     service:
       name: sharder
       namespace: sharding-system
