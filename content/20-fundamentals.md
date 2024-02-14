@@ -93,6 +93,8 @@ Notably, only fields pre-defined by the API server can be used in selectors, eli
 Internally, the API server indexes the pre-defined fields in its watch cache to reduce processing and selection effort for watch requests.
 Because of this, the application of field selectors is confined to particular cases, limiting their utility in a broader context.
 
+\newpage
+
 The Kubernetes API server resolves conflicts between concurrent updates through optimistic locking [@harder1984observations].
 This mechanism builds upon etcd's multi-version concurrency control architecture [@etcddocs].
 A key component in this approach is the `metadata.resourceVersion` field embedded in all objects, representing the specific revision of an object in the cluster.
@@ -144,6 +146,8 @@ Controllers can utilize caches for multiple object types, and typically, these c
 Additionally, caches can be configured to use filtered list and watch requests to reduce overhead for controllers not interested in certain objects. [@studyproject]
 
 ![Building blocks of a controller [@samplecontroller]](../assets/controller-components.jpg)
+
+\newpage
 
 The watch cache (the informer) also dispatches watch events to event handlers registered by controllers.
 Event handlers typically filter relevant changes based on the updated object, minimizing unnecessary reconciliation work.
@@ -293,6 +297,8 @@ I.e., the aim of these tests is not to measure the scalability of Kubernetes but
 
 At the time of writing, the Kubernetes community defines three official SLIs with corresponding SLOs that are satisfied when the load is below the recommended thresholds:
 [@k8scommunity]
+
+\newpage
 
 I.  \slok{mutating}The latency of processing mutating API calls for single objects (`create`, `update`, `patch`, `delete`) for every (resource, verb) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second.
 II.  \slok{read}The latency of processing non-streaming read-only API calls (`get`, `list`) for every (resource, scope) pair (excluding virtual and extended resources), measured as the 99th percentile per cluster-day, is at maximum 1 second (for requests reading a single object) or at maximum 30 seconds (for requests reading all objects from a single namespace or all objects in the cluster).

@@ -87,7 +87,7 @@ Also, the `Ready` reflects whether the sharding mechanism configured by the `Clu
 The sharder runs several components, including controllers and webhooks, that facilitate the core logic of the sharding mechanism.
 
 The `ClusterRing` controller is responsible for configuring the sharder webhooks.
-Every `ClusterRing` object generates a `MutatingWebhookConfiguration` ([@lst:sharder-webhook]).
+Every `ClusterRing` object generates a `MutatingWebhookConfiguration`.
 The configuration contains a single webhook for unassigned objects of all resources listed in the `ClusterRing` specification.
 In addition to watching `ClusterRing` objects for spec changes, the controller also watches shard `Leases` for availability changes.
 It reports the total number, the number of available shards, and the `Ready` condition in the `ClusterRing` status ([@lst:clusterring-status]).
@@ -358,6 +358,8 @@ drain.alpha.sharding.timebertt.dev/clusterring-<hash>-<clusterring-name>
 ```
 
 : Ring-specific drain label pattern {#lst:drain-label}
+
+\newpage
 
 Finally, the sharded controllers must comply with the handover protocol initiated by the sharder.
 When the sharder needs to move an object from an available shard to another for rebalancing, it first adds the `drain` label to instruct the currently responsible shard to stop reconciling the object.

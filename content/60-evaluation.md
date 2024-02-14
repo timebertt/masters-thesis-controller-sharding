@@ -45,6 +45,7 @@ A flavor without CPU overcommitment is chosen for more stability and better repr
 For Kubernetes clusters managed by Gardener ("shoot" clusters), the control plane components are hosted in another cluster ("seed" cluster) [@gardenerdocs].
 The seed cluster that hosts the control plane components of the evaluation cluster is modified to run machine flavors without CPU overcommitment (`c1a.8d`).
 Additionally, the evaluation cluster's main control plane components (etcd, kube-apiserver, kube-controller-manager) run on a dedicated worker pool using the `s1a.16d` flavor.
+
 The control plane runs a single etcd instance, four kube-apiserver instances, and a single kube-controller-manager instance.
 Autoscaling of the main control plane components is disabled to ensure a stable and reproducible evaluation environment.
 All three components are assigned static resource requests and limits: etcd and kube-apiserver use 12 CPUs and 12 GiB memory, and kube-controller-manager uses 6 CPUs and 6 GiB memory.
@@ -98,6 +99,8 @@ This is used to verify that configured SLOs (`queries[].slo` field, [@lst:k8s-sl
 For the measurements to be meaningful, the Kubernetes cluster SLOs themselves, as described in [@sec:kubernetes-scalability], must be satisfied.
 I.e., it must be ensured that the cluster itself, where the controllers are running, is performing well.
 While the latency of API requests (SLI \refslok*{mutating}, \refslok*{read}) is relevant for the experiment setup, pod startup latency (SLI \refslok*{startup}) is irrelevant as the load tests do not trigger pod startups.
+
+<!-- from results/basic/apiserver-slos.yaml -->
 
 ```yaml
 queries:
@@ -164,6 +167,8 @@ The experiment tool builds upon controller-runtime, and different controllers pe
 Hence, this load dimension can be measured using the reconciliation-related metrics exposed by controller-runtime.
 [@Lst:load-queries] shows the precise queries for measuring the described load dimensions during experiments.
 
+<!-- from results/basic/controller-load.yaml -->
+
 ```yaml
 queries:
 - name: website-count # dimension 1
@@ -180,6 +185,8 @@ queries:
 ```
 
 : Queries for measuring controller load {#lst:load-queries}
+
+\newpage
 
 To ensure the controller setup is performing well under the generated load, the SLIs for controllers defined in [@sec:controller-scalability] are also measured.
 The time that object keys are enqueued for reconciliation (SLI \refsloc*{queue}) is directly derived from the queue-related metrics exposed by controller-runtime.
@@ -198,6 +205,8 @@ In this scenario, the tool is a client of the `Website` API, i.e., an observer o
 As the reconciliation latency observed by the client includes the time until the corresponding watch event is received, it is essential to include this time in the measurements to reflect the actual user experience.
 For secondary reconciliation triggers, e.g., changing the referenced `Theme`, it is difficult to measure how long it takes the controller to observe the external change and reconcile `Websites` accordingly.
 Thus, `Theme` mutations are not performed during load test experiments for more accurate measurements.
+
+<!-- from results/basic/controller-slos.yaml -->
 
 ```yaml
 queries:
@@ -232,6 +241,8 @@ The `Deployment` controller must only observe the object and set the `Available`
 Hence, the measurement used for verifying SLO \refsloc*{recon} includes the reconciliation time `Deployments` of `Websites` for simplicity.
 Furthermore, the user's performance expectations are the same regardless of whether the controller uses sharding.
 Therefore, the measurement includes the sharding assignment latency related to the sharder's webhook or the sharder's controller, respectively.
+
+<!-- from results/basic/resource-usage.yaml -->
 
 ```yaml
 queries:
@@ -301,6 +312,8 @@ Additionally, it displays the CPU, memory, and network usage of the sharder and 
 
 ![Grafana experiments dashboard](../assets/dashboard-experiments.png){#fig:dashboard-experiments}
 
+\newpage
+
 ## Experiments
 
 Multiple experiments are performed based on the described experiment setup.
@@ -368,6 +381,8 @@ The scenario is executed for the external sharder setup with 1 to 5 webhosting-o
 To determine the maximum load capacity for which the SLOs are still satisfied, the SLIs are calculated every 15 seconds instead of once for the entire time window.
 For this, the SLO queries shown in [@lst:controller-slo-queries] are changed to range queries that consider all observations from the start of the experiment (cumulative percentiles) as shown in [@lst:controller-sli-queries-cumulative].
 
+<!-- from results/scale-out/controller-slis.yaml -->
+
 ```yaml
 queries:
 - name: latency-queue # SLI 1
@@ -401,13 +416,13 @@ As interpolation is only applied between the bucket boundaries, the estimated SL
 
 ![Cumulative controller SLIs in scale-out scenario](../results/scale-out/slis.pdf){#fig:scale-out-slis}
 
+![Load capacity increase with added instances in scale-out scenario](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
+
 After the experiment, the control plane SLOs are verified, and the measurements are retrieved from Prometheus.
 For each instance count, the last timestamp where the measured SLIs still satisfied the defined SLOs is determined ([@fig:scale-out-slis]).
 This timestamp is then used to look up values for both load dimensions.
 The resulting value represents the maximum load capacity of each controller setup ([@fig:scale-out-capacity]).
 Note that the load capacity values cannot be interpreted as absolute values but only relative to other values of the same load test.
-
-![Load capacity increase with added instances in scale-out scenario](../results/scale-out/capacity.pdf){#fig:scale-out-capacity}
 
 The results show that adding more controller instances brings more performance and increases the maximum load capacity of the system.
 The load capacity grows almost linearly with the number of added instances, so the setup fulfills \refreq{scale-out}.

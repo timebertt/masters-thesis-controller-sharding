@@ -51,6 +51,8 @@ Also, the design keeps consistent hashing as a deterministic partitioning algori
 Furthermore, the design keeps label-based assignments, coordination, and shard-specific label selectors for a good CPU and memory load distribution related to the controller's watch caches.
 Lastly, concurrent reconciliations are prevented by following the same protocol for handovers between active instances involving the `drain` label.
 
+\newpage
+
 In contrast to the previous design, the sharder is not part of the controller deployment itself but runs externally as a dedicated deployment.
 It is configured by `ClusterRing` objects that identify rings of controller instances responsible for a set of sharded API objects.
 Most notably, the sharder consists of two active components: the sharder webhook and the sharder controller.
@@ -152,6 +154,8 @@ With this, both ring-related sharding events can be detected and handled by a sh
 The webhook server shares the watch cache for shard leases with the sharder controller for constructing the consistent hash ring.
 When it receives a webhook request, the handler decodes the contained object from the original API request and determines the desired shard based on its metadata.
 It then responds with corresponding patch operations to mutate the `shard` label as desired.
+
+\newpage
 
 In a distributed system like this, failures in inter-component communication can occur at any time and must be handled accordingly.
 The design must cater to situations where the webhook server does not perform object assignments as needed due to network failures or similar issues.

@@ -1,9 +1,6 @@
 name: Build
 
 on:
-  release:
-    types:
-    - published
   push:
     branches:
     - main
