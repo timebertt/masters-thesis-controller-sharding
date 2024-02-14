@@ -87,12 +87,30 @@ Also, the `Ready` reflects whether the sharding mechanism configured by the `Clu
 The sharder runs several components, including controllers and webhooks, that facilitate the core logic of the sharding mechanism.
 
 The `ClusterRing` controller is responsible for configuring the sharder webhooks.
-Every `ClusterRing` object generates one `MutatingWebhookConfiguration` ([@lst:sharder-webhook]).
+Every `ClusterRing` object generates a `MutatingWebhookConfiguration` ([@lst:sharder-webhook]).
 The configuration contains a single webhook for unassigned objects of all resources listed in the `ClusterRing` specification.
 In addition to watching `ClusterRing` objects for spec changes, the controller also watches shard `Leases` for availability changes.
 It reports the total number, the number of available shards, and the `Ready` condition in the `ClusterRing` status ([@lst:clusterring-status]).
 
-The shard lease controller is responsible for detecting instance failures based on the `Lease` objects that every shard maintains.
+```yaml
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  labels:
+    alpha.sharding.timebertt.dev/clusterring: my-clusterring
+    alpha.sharding.timebertt.dev/state: ready # maintained by sharder
+  name: my-operator-565df55f4b-5vwpj
+  namespace: operator-system
+spec:
+  holderIdentity: my-operator-565df55f4b-5vwpj # must equal the name
+  acquireTime: "2024-02-14T10:29:49.881176Z"
+  renewTime: "2024-02-14T10:44:37.268301Z"
+  leaseDurationSeconds: 15 # similar to usual leader election
+```
+
+: Example shard lease {#lst:shard-lease}
+
+The shard lease controller is responsible for detecting instance failures based on the `Lease` objects that every shard maintains ([@lst:shard-lease]).
 Like in the study project implementation, it watches all shard `Leases` and determines the state of each shard following the conditions in [@tbl:shard-states].
 When a shard becomes uncertain, the shard lease controller tries to acquire the `Lease` to ensure connectivity with the API server.
 Only if it can acquire the `Lease` is the shard considered unavailable and removed from partitioning.
@@ -101,15 +119,15 @@ Orphaned `Leases` are garbage collected by the shard lease controller.
 For increased observability, the shard lease controller writes the determined state to the `alpha.sharding.timebertt.dev/state` label on the respective `Lease` objects.
 [@studyproject]
 
-|Shard State|Conditions|
-|---:|-------------------|
-|ready|held by shard (`metadata.name == spec.holderIdentity`), not expired|
-|expired|held by shard, expired up to `spec.leaseDurationSeconds` ago|
-|uncertain|held by shard, expired more than `spec.leaseDurationSeconds` ago|
-|dead|not held by shard (released or acquired by sharder)|
-|orphaned|not held by shard, expired at least 1 minute ago|
+|Shard State|Lease Conditions|
+|---:|------------------------|
+|ready|held by shard (`name == holderIdentity`), \newline not expired (`now <= renewTime + leaseDurationSeconds`)|
+|expired|held by shard (`name == holderIdentity`), \newline expired (`now > renewTime + leaseDurationSeconds`), \newline grace period not exceed (`now <= renewTime + 2 * leaseDurationSeconds`)|
+|uncertain|held by shard (`name == holderIdentity`), \newline expired and grace period exceeded (`now > renewTime + 2 * leaseDurationSeconds`)|
+|dead|not held by shard (released voluntarily or acquired by sharder) \newline (`name != holderIdentity`)|
+|orphaned|not held by shard (`name != holderIdentity`), \newline expired at least 1 minute ago (`now >= renewTime + leaseDurationSeconds + 1m`)|
 
-: Shard lease states [@studyproject] {#tbl:shard-states}
+: Shard lease states {#tbl:shard-states}
 
 The controller watches the `Lease` objects for relevant changes to ensure responsiveness.
 However, it also revisits `Leases` after a specific duration when their state would change if no update event occurs.
@@ -211,8 +229,7 @@ For managing the webhook server's certificate and populating the certificate bun
 : Example sharder webhook response {#lst:webhook-response}
 
 When the API server calls the webhook, the sharder first determines the corresponding `ClusterRing` object from the request path and the partitioning key to use for the requested object.
-It then reads all shards of the ring from the `Lease` cache and constructs a consistent hash ring with all available instances.
-Afterward, it determines the desired shard and responds to the API server with an object patch, adding the `shard` label as shown in [@lst:webhook-response].
+Afterward, it determines the desired shard using the consistent hash ring and responds with an object patch, adding the `shard` label as shown in [@lst:webhook-response].
 
 Finally, the sharder runs the "sharder" controller that handles changes to the set of available shards and the ring's configuration.
 It watches `ClusterRings` and shard `Leases` to reconcile all object assignments of a ring whenever its configuration changes or when a shard becomes available or unavailable (\refevt{new-shard}, \refevt*{shard-down}).
@@ -242,24 +259,9 @@ The implementation repository[^implementation] contains reusable reference imple
 Developers can use them in controllers based on controller-runtime [@controllerruntime].
 However, the aspects can also be implemented similarly in controllers not based on controller-runtime or written in another programming language than Go.
 
-```yaml
-apiVersion: coordination.k8s.io/v1
-kind: Lease
-metadata:
-  labels:
-    alpha.sharding.timebertt.dev/clusterring: my-clusterring
-  name: my-operator-565df55f4b-5vwpj
-  namespace: operator-system
-spec:
-  holderIdentity: my-operator-565df55f4b-5vwpj # must equal the Lease's name
-  leaseDurationSeconds: 15 # similar to usual leader election
-```
-
-: Example shard lease {#lst:shard-lease}
-
 Most controllers already perform leader elections using a central `Lease` lock object and are configured to stop any controllers when they lose their `Lease`.
 Most implementations exit the entire process when failing to renew the lock for safety.
-These leader election mechanisms can be reused to maintain the shard `Lease` as shown in [@lst:shard-lease].
+These leader election mechanisms can be reused to maintain the shard `Lease` ([@lst:shard-lease]).
 Instead of using a central `Lease` object for all instances, each instance acquires and maintains its own `Lease` object to announce itself to the sharder.
 A shard may only run its controllers if it holds its shard `Lease`.
 For example, it must stop all controllers when it fails to renew the shard `Lease` in time.
@@ -315,7 +317,7 @@ Next, the sharded controllers must use a label selector on watches for all shard
 The shard label's value is the name of the shard, i.e., the name of the shard lease and the shard lease's `holderIdentity`.
 With this, the shard will only cache the objects assigned to it, and the controllers will only reconcile this subset of objects.
 Note that when using a label selector on a watch request and the label changes so that the selector now matches or does not match anymore, the API server will emit a `ADD` or `DELETE` watch event respectively.
-In controller-runtime, the shard's manager can be configured to watch and reconcile only objects assigned to it, as shown in [@lst:go-filter-cache][^filter-cache-version].
+In controller-runtime, the shard's manager can be configured to watch and reconcile only objects assigned to it, as shown in [@lst:go-filter-cache].[^filter-cache-version]
 
 [^filter-cache-version]: The shown code works with controller-runtime v0.16 and v0.17, other versions might require deviating configuration.
 
