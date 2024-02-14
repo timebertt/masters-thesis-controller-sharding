@@ -32,7 +32,8 @@ To conclude, the systematic evaluation has shown that all identified requirement
 As the mechanism can be easily applied to existing controllers, it opens opportunities for adopting the presented work, discussion, and collaboration in the open-source community.
 Further development is simplified because the implementation does not depend on a specific Kubernetes version.
 
-As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through usage in productive controllers.
+As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through usage in real-world controllers.
+The implementation's performance during rolling updates, automatic scaling, chaos engineering experiments, and more scenarios should be investigated and enhanced if necessary.
 For this, feedback from the community on the presented development needs to be collected.
 New requirements shall be collected and explored if certain use cases cannot adopt the presented work.
 For example, it might become necessary to consider other relationships between objects in the partitioning algorithm, e.g., multiple ownership levels.
@@ -44,9 +45,3 @@ This, in turn, could be orchestrated for validating new controller versions in t
 If sufficient interest in sharding Kubernetes controllers arises, it could be considered to build the sharding mechanism into the core Kubernetes components.
 Users would benefit from a more tightly integrated experience without managing the dedicated sharding components.
 Furthermore, object assignments could be performed in an in-tree admission plugin in the API server, which eliminates the latency added by network operations for webhook calls.
-
-\todo[inline]{further experiments if not done in evaluation}
-
-- rolling updates
-- chaos testing
-- autoscaling

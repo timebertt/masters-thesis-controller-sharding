@@ -413,31 +413,6 @@ The results show that adding more controller instances brings more performance a
 The load capacity grows almost linearly with the number of added instances, so the setup fulfills \refreq{scale-out}.
 With this, applying the external sharding design makes Kubernetes controllers horizontally scalable.
 
-### Rolling Updates
-
-TODO (but optional)
-
-- rolling updates of controller
-- evaluate coordination on object movements
-- show that SLOs are still met
-
-### Chaos Testing
-
-TODO (but optional)
-
-- randomly kill instances
-- similar to [knative chaosduck](https://github.com/knative/pkg/blob/main/leaderelection/chaosduck/main.go#L17)
-- show that SLOs are still met
-
-### Autoscaling
-
-TODO (but optional)
-
-- similar to scale out scenario
-- horizontal autoscaling of controller according to load
-  - HPA on queue duration (SLI \refsloc*{queue})
-- evaluate coordination on object movements
-
 ## Discussion
 
 The performed evaluation shows that the presented design and implementation make Kubernetes controllers horizontally scalable.
