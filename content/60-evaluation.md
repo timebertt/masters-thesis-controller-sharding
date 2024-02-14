@@ -362,7 +362,7 @@ The number of objects (\refdimn{count}) grows up to roughly 9,000, and the churn
 - The `website-generator` creates 10 random `Websites` per second.
 - The `website-mutator` updates each `Website` spec twice per minute.
 
-![Generated load in scale out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
+![Generated load in scale-out scenario](../results/scale-out/load.pdf){#fig:scale-out-load}
 
 The scenario is executed for the external sharder setup with 1 to 5 webhosting-operator instances, each running 5 concurrent workers for the `Website` controller.
 To determine the maximum load capacity for which the SLOs are still satisfied, the SLIs are calculated every 15 seconds instead of once for the entire time window.
