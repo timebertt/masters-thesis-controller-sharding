@@ -19,7 +19,7 @@ The Kubernetes community has extensively picked up the operator pattern, and man
 - streaming & messaging: strimzi-kafka-operator [@strimzi], Koperator [@koperator]
 - storage and backup: Rook [@rook], Velero [@velero]
 - machine learning: Kubeflow [@kubeflow]
-- networking: Knative [@knative], Istio [@istio]
+- serverless and service mesh: Knative [@knative], Istio [@istio]
 - infrastructure and application management: Crossplane [@crossplane], Argo CD [@argocd], Flux [@flux], KubeVela [@kubevela]
 - cluster management: Gardener [@gardenerdocs], Cluster API [@clusterapi]
 - cloud infrastructure: Yaook [@yaook], IronCore [@ironcore]
@@ -47,7 +47,7 @@ It limits the maximum number of objects and the maximum object churn rate to the
 [@bondi2000characteristics]
 
 To address the demand for facilitating large-scale deployments, several of the mentioned open-source projects feature sharding mechanisms that distribute reconciliation work across multiple controller instances [@argocddocs; @kubevela].
-However, the mechanisms are specific to the individual projects and cannot be reused in other controllers.
+However, the mechanisms are specific to the individual projects and cannot be reused in other custom controllers or Kubernetes core controllers.
 Many of these sharding implementations still need to be fully matured and face similar challenges, e.g., the mechanism requires clients to be sharding-aware and manually assign API objects to shards, or the implementation does not facilitate automatic failover and rebalancing [@flux].
 Furthermore, many other projects also consider sharding mechanisms for achieving higher scalability[^sharding-issues].
 The problem is that no standard design or implementation exists that can be applied to arbitrary controllers for scaling them horizontally.

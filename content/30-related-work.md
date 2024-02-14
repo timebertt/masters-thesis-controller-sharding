@@ -78,12 +78,15 @@ The assignments per object also require many sharder reconciliations and API req
 
 ![Study project memory usage by pod [@studyproject]](../assets/study-project-memory.pdf){#fig:study-project-memory}
 
-## knative
+## Knative
 
-In knative [@knative], controllers also use leader election but not for global locking[^knative-issue].
+Knative is a platform for running serverless and event-driven workloads on Kubernetes.
+Users package their applications as container images and deploy them without managing infrastructure, networking, autoscaling, revision tracking, and other cross-cutting concerns [@knative].
+
+In Knative, controllers also use leader election but not for global locking[^knative-issue].
 Instead, the controllers perform leader election per reconciler[^reconciler] and bucket.
 When running multiple instances of the controllers, each instance might acquire a subset of all leases and run only the corresponding reconcilers.
-Some of knative's reconcilers are leader-aware and run in all instances but behave differently according to the leadership status.
+Some of Knative's reconcilers are leader-aware and run in all instances but behave differently according to the leadership status.
 For example, the webhook components also use reconcilers for building up indices.
 The reconcilers also run in non-leader instances but only perform writing actions in the leader instance.
 Additionally, the keys of all objects are split into a configurable number of buckets.
@@ -92,7 +95,7 @@ Before reconciling an object, the reconciler checks if its instance is responsib
 Only if it is responsible can it continue with the usual reconciliation.
 [@mooresharding]
 
-![Failover with leader election per controller and bucket in knative [@mooresharding]](../assets/reconciler-buckets.pdf)
+![Failover with leader election per controller and bucket in Knative [@mooresharding]](../assets/reconciler-buckets.pdf)
 
 To realize these mechanisms, all controller instances run all informers.
 I.e., they watch all objects regardless of whether they need to reconcile them.
@@ -102,7 +105,7 @@ Furthermore, the mechanisms do not guarantee an even distribution of objects acr
 Users need to configure a higher number of buckets to achieve an even distribution.
 This, in turn, increases the additional API request volume for `Lease` objects even further.
 
-The described sharding mechanisms in knative achieve fast failovers as informers are warmed in all controller instances.
+The described sharding mechanisms in Knative achieve fast failovers as informers are warmed in all controller instances.
 However, the system's scalability is still limited as the watch caches' resource impact is duplicated and not distributed.
 Applying the described concepts to other controllers is complex and requires notable changes to the controller implementation.
 To summarize, the system benefits from these mechanisms in terms of availability but not in terms of scalability.
@@ -112,7 +115,10 @@ To summarize, the system benefits from these mechanisms in terms of availability
 
 ## Flux
 
-The Flux controllers offer a command line option `--watch-label-selector` that filters the controllers' watch caches using a label selector.
+Flux [@flux] is a tool for facilitating continuous delivery of Kubernetes-based applications.
+It is comprised of multiple components that pull application configuration from sources like Git repositories and deploy them using Kustomize [@kustomizedocs] and Helm [@helmdocs].
+
+The Flux components offer a command line option `--watch-label-selector` that filters the controllers' watch caches using a label selector.
 This can be used to scale out Flux controllers horizontally using a sharding strategy.
 For this, users deploy multiple instances of the same controller with unique label selectors used as the sharding key[^flux-sharding].
 Then, users assign objects to shards by adding the shard key label to the respective manifests ([@lst:flux-sharding]).
@@ -157,7 +163,8 @@ The sharding strategy is limited to a static number of instances and does not al
 
 ## Argo CD
 
-In Argo CD [@argocddocs], the application controller is the central component that deploys manifests pulled from Git repositories to Kubernetes.
+Argo CD [@argocddocs] is a continuous delivery tool for Kubernetes similar to Flux.
+In Argo CD, the application controller is the central component that deploys manifests pulled from Git repositories to Kubernetes.
 It works with one or more clusters configured via `Secrets` that contain credentials for the cluster.
 The application reconciliation process can become memory-intensive depending on the number and size of the deployed manifests.
 
@@ -180,7 +187,8 @@ However, this is specific to Argo CD's application controller, and the mechanism
 
 ## KubeVela
 
-KubeVela also allows running multiple instances of its core controller responsible for deploying applications to support large-scale use cases.
+KubeVela is a platform for delivery and management of Kubernetes-based applications.
+The project also allows running multiple instances of its core controller responsible for deploying applications to support large-scale use cases.
 For this, users deploy multiple instances of vela-core – one in master mode (primary) and the others in slave mode (shards).
 The primary instance runs all controllers and webhooks and schedules applications to one of the available shard instances.
 On the other hand, the shard instances are labeled with a unique `shard-id` label and only run the application controller.

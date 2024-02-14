@@ -32,7 +32,7 @@ To conclude, the systematic evaluation has shown that all identified requirement
 As the mechanism can be easily applied to existing controllers, it opens opportunities for adopting the presented work, discussion, and collaboration in the open-source community.
 Further development is simplified because the implementation does not depend on a specific Kubernetes version.
 
-As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through usage in real-world controllers.
+As future work on horizontally scalable Kubernetes controllers, the design and implementation from this thesis should be further evaluated through usage in real-world controllers including built-in and custom controllers.
 The implementation's performance during rolling updates, automatic scaling, chaos engineering experiments [@chaos2016], and more scenarios should be investigated and enhanced if necessary.
 For this, feedback from the community on the presented development needs to be collected.
 New requirements shall be collected and explored if certain use cases cannot adopt the presented work.

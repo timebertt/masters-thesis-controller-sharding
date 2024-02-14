@@ -12,7 +12,7 @@ This thesis bridges this gap by proposing an approach to achieve horizontal scal
 The design builds upon proven mechanisms from distributed databases to distribute the responsibility for API objects across a ring of controller instances, removing the scalability limitations inherent in traditional leader election setups.
 Key features include dynamic membership and failure detection for automatic failovers and rebalancing, a consistent hashing algorithm for ensuring a balanced distribution of API objects, label-based coordination for transparent object assignments without client interaction, and a dedicated handover protocol for preventing concurrent reconciliations.
 
-This thesis presents a reusable implementation that allows for easy integration of the mechanism into arbitrary controllers, opening the potential for adoption and collaboration within the open-source community.
+This thesis presents a reusable implementation that allows for easy integration of the mechanism into arbitrary controllers including built-in controllers, opening the potential for adoption and collaboration within the open-source community.
 Systematic evaluation using load test experiments demonstrates that all identified requirements are met.
 The mechanism showcases minimal overhead compared to singleton controller setups and an almost linear increase of the controller's load capacity with every added controller instance.
 This work contributes to advancing the scalability and efficiency of Kubernetes controllers, offering promising prospects for the future development and usage of Kubernetes and controller-based applications and platforms.

@@ -41,6 +41,7 @@
         "Kubeflow",
         "kubelet",
         "kubernetes",
+        "Kustomize",
         "Metacontroller",
         "newpage",
         "pandoc",
